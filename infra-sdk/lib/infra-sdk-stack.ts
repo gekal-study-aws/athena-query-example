@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import {Construct} from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as glue from 'aws-cdk-lib/aws-glue';
 import * as athena from 'aws-cdk-lib/aws-athena';
@@ -50,18 +50,18 @@ export class InfraSdkStack extends cdk.Stack {
         },
         storageDescriptor: {
           columns: [
-            { name: 'timestamp', type: 'string' },
-            { name: 'user_id', type: 'string' },
-            { name: 'event_name', type: 'string' },
-            { name: 'resource_id', type: 'string' },
-            { name: 'status', type: 'string' },
-            { name: 'ip_address', type: 'string' },
+            {name: 'timestamp', type: 'string'},
+            {name: 'user_id', type: 'string'},
+            {name: 'event_name', type: 'string'},
+            {name: 'resource_id', type: 'string'},
+            {name: 'status', type: 'string'},
+            {name: 'ip_address', type: 'string'},
           ],
           location: auditLogBucket.s3UrlForObject(),
           inputFormat: 'org.apache.hadoop.mapred.TextInputFormat',
           outputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat',
           serdeInfo: {
-            serializationLib: 'org.openx.data.jsonserde.JsonSerDe',
+            serializationLibrary: 'org.openx.data.jsonserde.JsonSerDe',
           },
         },
       },
