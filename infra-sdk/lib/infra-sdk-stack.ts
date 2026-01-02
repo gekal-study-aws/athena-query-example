@@ -57,13 +57,18 @@ export class InfraSdkStack extends cdk.Stack {
             {name: 'status', type: 'string'},
             {name: 'ip_address', type: 'string'},
           ],
-          location: auditLogBucket.s3UrlForObject(),
+          location: auditLogBucket.s3UrlForObject('logs/'),
           inputFormat: 'org.apache.hadoop.mapred.TextInputFormat',
           outputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat',
           serdeInfo: {
             serializationLibrary: 'org.openx.data.jsonserde.JsonSerDe',
           },
         },
+        partitionKeys: [
+          {name: 'year', type: 'string'},
+          {name: 'month', type: 'string'},
+          {name: 'day', type: 'string'},
+        ],
       },
     });
 

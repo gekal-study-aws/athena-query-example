@@ -7,15 +7,15 @@ if [ -z "$1" ]; then
 fi
 
 BUCKET_NAME=$1
-FILE_NAME="sample_audit_logs.json"
+DATA_DIR="data"
 
-if [ ! -f "$FILE_NAME" ]; then
-    echo "Error: $FILE_NAME not found. Run generate_sample_logs.sh first."
+if [ ! -d "$DATA_DIR" ]; then
+    echo "Error: $DATA_DIR directory not found. Run generate_sample_logs.sh first."
     exit 1
 fi
 
-echo "Uploading $FILE_NAME to s3://$BUCKET_NAME/logs/"
-aws s3 cp "$FILE_NAME" "s3://$BUCKET_NAME/logs/$FILE_NAME"
+echo "Uploading $DATA_DIR to s3://$BUCKET_NAME/logs/"
+aws s3 sync "$DATA_DIR" "s3://$BUCKET_NAME/logs/"
 
 if [ $? -eq 0 ]; then
     echo "Upload successful."

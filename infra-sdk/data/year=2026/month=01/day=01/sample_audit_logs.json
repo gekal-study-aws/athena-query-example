@@ -1,0 +1,10 @@
+{"timestamp":"2026-01-01T13:40:10Z","user_id":"guest","event_name":"logout","resource_id":"res-070","status":"failure","ip_address":"192.168.1.193"}
+{"timestamp":"2026-01-01T00:50:21Z","user_id":"user_3","event_name":"file_upload","resource_id":"res-022","status":"success","ip_address":"192.168.1.104"}
+{"timestamp":"2026-01-01T06:36:15Z","user_id":"guest","event_name":"delete_resource","resource_id":"res-066","status":"denied","ip_address":"192.168.1.208"}
+{"timestamp":"2026-01-01T05:35:14Z","user_id":"user_2","event_name":"delete_resource","resource_id":"res-064","status":"success","ip_address":"192.168.1.166"}
+{"timestamp":"2026-01-01T03:41:11Z","user_id":"guest","event_name":"login","resource_id":"res-073","status":"success","ip_address":"192.168.1.207"}
+{"timestamp":"2026-01-01T16:10:49Z","user_id":"user_2","event_name":"logout","resource_id":"res-054","status":"failure","ip_address":"192.168.1.117"}
+{"timestamp":"2026-01-01T06:37:15Z","user_id":"user_1","event_name":"login","resource_id":"res-055","status":"denied","ip_address":"192.168.1.53"}
+{"timestamp":"2026-01-01T02:44:23Z","user_id":"user_2","event_name":"file_download","resource_id":"res-056","status":"failure","ip_address":"192.168.1.77"}
+{"timestamp":"2026-01-01T00:42:20Z","user_id":"guest","event_name":"logout","resource_id":"res-080","status":"denied","ip_address":"192.168.1.135"}
+{"timestamp":"2026-01-01T00:42:20Z","user_id":"guest","event_name":"file_upload","resource_id":"res-089","status":"denied","ip_address":"192.168.1.182"}

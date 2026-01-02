@@ -1,20 +1,31 @@
 #!/bin/bash
 
-# 生成するログの行数
+# 生成するログの行数と日付
 NUM_LOGS=${1:-100}
-OUTPUT_FILE="sample_audit_logs.json"
+TARGET_DATE=${2:-$(date +"%Y-%m-%d")}
+YEAR=$(date -d "$TARGET_DATE" +"%Y" 2>/dev/null || date -f "%Y-%m-%d" -j "$TARGET_DATE" +"%Y")
+MONTH=$(date -d "$TARGET_DATE" +"%m" 2>/dev/null || date -f "%Y-%m-%d" -j "$TARGET_DATE" +"%m")
+DAY=$(date -d "$TARGET_DATE" +"%d" 2>/dev/null || date -f "%Y-%m-%d" -j "$TARGET_DATE" +"%d")
 
-echo "Generating $NUM_LOGS sample audit logs..."
+OUTPUT_DIR="data/year=$YEAR/month=$MONTH/day=$DAY"
+mkdir -p "$OUTPUT_DIR"
+OUTPUT_FILE="$OUTPUT_DIR/sample_audit_logs.json"
+
+echo "Generating $NUM_LOGS sample audit logs for $TARGET_DATE..."
 
 # ファイルを初期化
-> $OUTPUT_FILE
+> "$OUTPUT_FILE"
 
 USERS=("user_1" "user_2" "user_3" "admin" "guest")
 EVENTS=("login" "logout" "file_upload" "file_download" "delete_resource")
 STATUSES=("success" "failure" "denied")
 
 for i in $(seq 1 $NUM_LOGS); do
-    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    # 指定された日付内でのランダムな時間を生成 (00:00:00 - 23:59:59)
+    RANDOM_HOUR=$(printf "%02d" $((RANDOM % 24)))
+    RANDOM_MIN=$(printf "%02d" $((RANDOM % 60)))
+    RANDOM_SEC=$(printf "%02d" $((RANDOM % 60)))
+    TIMESTAMP="${TARGET_DATE}T${RANDOM_HOUR}:${RANDOM_MIN}:${RANDOM_SEC}Z"
     USER_ID=${USERS[$RANDOM % ${#USERS[@]}]}
     EVENT_NAME=${EVENTS[$RANDOM % ${#EVENTS[@]}]}
     RESOURCE_ID="res-$(printf "%03d" $((RANDOM % 100)))"
