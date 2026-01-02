@@ -93,9 +93,11 @@ npm run setup-sdk
 
 ## Athena での確認
 
-### 1. パーティションの読み込み
+### 1. パーティションの認識 (Partition Projection)
 
-データをアップロードした後、Athena でパーティションをメタデータに登録する必要があります。Athena コンソールまたはクエリエディタで以下を実行してください。
+本プロジェクトでは **Partition Projection** を採用しているため、データをアップロードするだけで即座に Athena で検索可能です。手動での `MSCK REPAIR TABLE` は不要です。
+
+※CDK 以外（SDK等）で構築し Partition Projection が設定されていない場合は、以下を実行してください。
 
 ```sql
 -- CDK で構築した場合

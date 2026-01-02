@@ -47,6 +47,16 @@ export class InfraSdkStack extends cdk.Stack {
           'has_encrypted_data': 'false',
           'classification': 'json',
           'typeOfData': 'file',
+          'projection.enabled': 'true',
+          'projection.year.type': 'integer',
+          'projection.year.range': '2024,2030',
+          'projection.month.type': 'integer',
+          'projection.month.range': '1,12',
+          'projection.month.digits': '2',
+          'projection.day.type': 'integer',
+          'projection.day.range': '1,31',
+          'projection.day.digits': '2',
+          'storage.location.template': auditLogBucket.s3UrlForObject('logs/year=${year}/month=${month}/day=${day}'),
         },
         storageDescriptor: {
           columns: [
