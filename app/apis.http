@@ -13,7 +13,7 @@ Content-Type: application/json
 }
 
 ### status
-GET {{Host}}/api/athena/status/{{query.body.queryId}}
+GET {{Host}}/api/athena/status/{{query.response.body.queryExecutionId}}
 
 ### results
-GET {{Host}}/api/athena/results/{{query.body.queryId}}
+GET {{Host}}/api/athena/results/{{query.response.body.queryExecutionId}}

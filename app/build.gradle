@@ -27,6 +27,9 @@ dependencies {
 	implementation platform('software.amazon.awssdk:bom:2.41.0')
 	implementation 'software.amazon.awssdk:athena'
 
+	implementation 'software.amazon.awssdk:sso'
+	implementation 'software.amazon.awssdk:ssooidc'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

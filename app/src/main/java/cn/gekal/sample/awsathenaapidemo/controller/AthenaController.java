@@ -1,6 +1,8 @@
 package cn.gekal.sample.awsathenaapidemo.controller;
 
 import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryRequest;
+import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryResponse;
+import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryStatusResponse;
 import cn.gekal.sample.awsathenaapidemo.services.AthenaService;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.athena.model.QueryExecutionState;
@@ -21,21 +23,26 @@ public class AthenaController {
      * 1. 検索の発行
      */
     @PostMapping("/query")
-    public String submitQuery(@RequestBody AuditLogQueryRequest request) {
+    public AuditLogQueryResponse submitQuery(@RequestBody AuditLogQueryRequest request) {
         // 監査ログ検索用のSQLを構築
         String sql = String.format(
                 "SELECT * FROM audit_log_db.audit_logs WHERE year = '%s' AND month = '%s' AND day = '%s' AND user_id = '%s' LIMIT 10",
                 request.getYear(), request.getMonth(), request.getDay(), request.getUserId()
         );
-        return athenaService.submitQuery(sql);
+
+        String queryExecutionId = athenaService.submitQuery(sql);
+
+        return new AuditLogQueryResponse(queryExecutionId);
     }
 
     /**
      * 2. 実行結果のチェック
      */
     @GetMapping("/status/{queryExecutionId}")
-    public QueryExecutionState getQueryStatus(@PathVariable String queryExecutionId) {
-        return athenaService.getQueryStatus(queryExecutionId);
+    public AuditLogQueryStatusResponse getQueryStatus(@PathVariable String queryExecutionId) {
+        QueryExecutionState queryStatus = athenaService.getQueryStatus(queryExecutionId);
+
+        return new AuditLogQueryStatusResponse(queryStatus);
     }
 
     /**
