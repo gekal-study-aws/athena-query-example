@@ -10,20 +10,16 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 @Configuration
 public class AthenaConfig {
 
-    @Value("${athena.region:ap-northeast-1}")
-    private String region;
+  @Value("${athena.region:ap-northeast-1}")
+  private String region;
 
-    @Bean
-    public AthenaClient athenaClient() {
-        return AthenaClient.builder()
-                .region(Region.of(region))
-                .build();
-    }
+  @Bean
+  public AthenaClient athenaClient() {
+    return AthenaClient.builder().region(Region.of(region)).build();
+  }
 
-    @Bean
-    public S3Presigner s3Presigner() {
-        return S3Presigner.builder()
-                .region(Region.of(region))
-                .build();
-    }
+  @Bean
+  public S3Presigner s3Presigner() {
+    return S3Presigner.builder().region(Region.of(region)).build();
+  }
 }
