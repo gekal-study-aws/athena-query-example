@@ -1,4 +1,4 @@
-package cn.gekal.sample.awsathenaapidemo.dto;
+package cn.gekal.sample.awsathenaapidemo.interfaces.dto;
 
 public class AuditLogQueryRequest {
   private String year;

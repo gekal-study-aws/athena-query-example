@@ -1,4 +1,4 @@
-package cn.gekal.sample.awsathenaapidemo.dto;
+package cn.gekal.sample.awsathenaapidemo.interfaces.dto;
 
 import software.amazon.awssdk.services.athena.model.QueryExecutionState;
 

@@ -1,8 +1,8 @@
-package cn.gekal.sample.awsathenaapidemo.dto;
+package cn.gekal.sample.awsathenaapidemo.domain.model;
 
 import java.util.Map;
 
-public class AuditLogRecord {
+public class AuditLog {
   private String year;
   private String month;
   private String day;

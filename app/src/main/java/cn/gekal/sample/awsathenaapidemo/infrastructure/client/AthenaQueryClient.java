@@ -1,6 +1,7 @@
-package cn.gekal.sample.awsathenaapidemo.services;
+package cn.gekal.sample.awsathenaapidemo.infrastructure.client;
 
-import cn.gekal.sample.awsathenaapidemo.dto.AuditLogRecord;
+import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
+import cn.gekal.sample.awsathenaapidemo.domain.repository.AthenaQueryRepository;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,18 +9,17 @@ import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.athena.AthenaClient;
+import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.athena.model.*;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
-@Service
-public class AthenaService {
+@Repository
+public class AthenaQueryClient implements AthenaQueryRepository {
 
-  private final AthenaClient athenaClient;
+  private final software.amazon.awssdk.services.athena.AthenaClient athenaClient;
   private final S3Presigner s3Presigner;
 
   @Value("${athena.output-location}")
@@ -28,37 +28,13 @@ public class AthenaService {
   @Value("${athena.database}")
   private String databaseName;
 
-  public AthenaService(AthenaClient athenaClient, S3Presigner s3Presigner) {
+  public AthenaQueryClient(
+      software.amazon.awssdk.services.athena.AthenaClient athenaClient, S3Presigner s3Presigner) {
     this.athenaClient = athenaClient;
     this.s3Presigner = s3Presigner;
   }
 
-  public String getDownloadUrl(String queryExecutionId) {
-    GetQueryExecutionRequest getQueryExecutionRequest =
-        GetQueryExecutionRequest.builder().queryExecutionId(queryExecutionId).build();
-
-    GetQueryExecutionResponse getQueryExecutionResponse =
-        athenaClient.getQueryExecution(getQueryExecutionRequest);
-    String s3Location =
-        getQueryExecutionResponse.queryExecution().resultConfiguration().outputLocation();
-
-    // s3Location は s3://bucket-name/path/to/result.csv の形式
-    String bucket = s3Location.substring(5, s3Location.indexOf("/", 5));
-    String key = s3Location.substring(s3Location.indexOf("/", 5) + 1);
-
-    GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(key).build();
-
-    GetObjectPresignRequest getObjectPresignRequest =
-        GetObjectPresignRequest.builder()
-            .signatureDuration(Duration.ofMinutes(60))
-            .getObjectRequest(getObjectRequest)
-            .build();
-
-    PresignedGetObjectRequest presignedGetObjectRequest =
-        s3Presigner.presignGetObject(getObjectPresignRequest);
-    return presignedGetObjectRequest.url().toString();
-  }
-
+  @Override
   public String submitQuery(String queryString) {
     QueryExecutionContext queryExecutionContext =
         QueryExecutionContext.builder().database(databaseName).build();
@@ -75,19 +51,23 @@ public class AthenaService {
 
     StartQueryExecutionResponse startQueryExecutionResponse =
         athenaClient.startQueryExecution(startQueryExecutionRequest);
+
     return startQueryExecutionResponse.queryExecutionId();
   }
 
+  @Override
   public QueryExecutionState getQueryStatus(String queryExecutionId) {
     GetQueryExecutionRequest getQueryExecutionRequest =
         GetQueryExecutionRequest.builder().queryExecutionId(queryExecutionId).build();
 
     GetQueryExecutionResponse getQueryExecutionResponse =
         athenaClient.getQueryExecution(getQueryExecutionRequest);
+
     return getQueryExecutionResponse.queryExecution().status().state();
   }
 
-  public List<AuditLogRecord> getQueryResults(String queryExecutionId) {
+  @Override
+  public List<AuditLog> getQueryResults(String queryExecutionId) {
     GetQueryResultsRequest getQueryResultsRequest =
         GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId).build();
 
@@ -102,7 +82,7 @@ public class AthenaService {
     // Athenaの結果は通常ResultSetMetadataに含まれるため、データ行のみを処理する。
     // ただし、AthenaのGetQueryResultsは1行目にヘッダーが含まれることがあるため確認が必要。
 
-    List<AuditLogRecord> results = new ArrayList<>();
+    List<AuditLog> results = new ArrayList<>();
 
     // rowsの0番目がヘッダーかどうか判定（簡易的に"year"などのカラム名が含まれているか）
     int startIndex = 0;
@@ -114,16 +94,16 @@ public class AthenaService {
     }
 
     for (int i = startIndex; i < rows.size(); i++) {
-      AuditLogRecord record = createAuditLogRecord(rows, i, columnInfos);
+      AuditLog record = createAuditLog(rows, i, columnInfos);
       results.add(record);
     }
     return results;
   }
 
-  private static @NonNull AuditLogRecord createAuditLogRecord(
+  private static @NonNull AuditLog createAuditLog(
       List<Row> rows, int i, List<ColumnInfo> columnInfos) {
     Row row = rows.get(i);
-    AuditLogRecord record = new AuditLogRecord();
+    AuditLog record = new AuditLog();
     Map<String, String> otherDetails = new HashMap<>();
 
     for (int j = 0; j < columnInfos.size(); j++) {
@@ -167,5 +147,32 @@ public class AthenaService {
       record.setOtherDetails(otherDetails);
     }
     return record;
+  }
+
+  @Override
+  public String getDownloadUrl(String queryExecutionId) {
+    GetQueryExecutionRequest getQueryExecutionRequest =
+        GetQueryExecutionRequest.builder().queryExecutionId(queryExecutionId).build();
+
+    GetQueryExecutionResponse getQueryExecutionResponse =
+        athenaClient.getQueryExecution(getQueryExecutionRequest);
+    String s3Location =
+        getQueryExecutionResponse.queryExecution().resultConfiguration().outputLocation();
+
+    // s3Location は s3://bucket-name/path/to/result.csv の形式
+    String bucket = s3Location.substring(5, s3Location.indexOf("/", 5));
+    String key = s3Location.substring(s3Location.indexOf("/", 5) + 1);
+
+    GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(key).build();
+
+    GetObjectPresignRequest getObjectPresignRequest =
+        GetObjectPresignRequest.builder()
+            .signatureDuration(Duration.ofMinutes(60))
+            .getObjectRequest(getObjectRequest)
+            .build();
+
+    PresignedGetObjectRequest presignedGetObjectRequest =
+        s3Presigner.presignGetObject(getObjectPresignRequest);
+    return presignedGetObjectRequest.url().toString();
   }
 }
