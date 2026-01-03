@@ -1,5 +1,6 @@
 package cn.gekal.sample.awsathenaapidemo.controller;
 
+import cn.gekal.sample.awsathenaapidemo.dto.AuditLogDownloadUrlResponse;
 import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryRequest;
 import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryResponse;
 import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryStatusResponse;
@@ -52,5 +53,14 @@ public class AthenaController {
     @GetMapping("/results/{queryExecutionId}")
     public List<AuditLogRecord> getQueryResults(@PathVariable String queryExecutionId) {
         return athenaService.getQueryResults(queryExecutionId);
+    }
+
+    /**
+     * 4. ダウンロードURLの取得
+     */
+    @GetMapping("/download-url/{queryExecutionId}")
+    public AuditLogDownloadUrlResponse getDownloadUrl(@PathVariable String queryExecutionId) {
+        String downloadUrl = athenaService.getDownloadUrl(queryExecutionId);
+        return new AuditLogDownloadUrlResponse(downloadUrl);
     }
 }

@@ -6,7 +6,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.athena.AthenaClient;
 import software.amazon.awssdk.services.athena.model.*;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +21,7 @@ import java.util.Map;
 public class AthenaService {
 
     private final AthenaClient athenaClient;
+    private final S3Presigner s3Presigner;
 
     @Value("${athena.output-location}")
     private String outputS3Bucket;
@@ -23,8 +29,35 @@ public class AthenaService {
     @Value("${athena.database}")
     private String databaseName;
 
-    public AthenaService(AthenaClient athenaClient) {
+    public AthenaService(AthenaClient athenaClient, S3Presigner s3Presigner) {
         this.athenaClient = athenaClient;
+        this.s3Presigner = s3Presigner;
+    }
+
+    public String getDownloadUrl(String queryExecutionId) {
+        GetQueryExecutionRequest getQueryExecutionRequest = GetQueryExecutionRequest.builder()
+                .queryExecutionId(queryExecutionId)
+                .build();
+
+        GetQueryExecutionResponse getQueryExecutionResponse = athenaClient.getQueryExecution(getQueryExecutionRequest);
+        String s3Location = getQueryExecutionResponse.queryExecution().resultConfiguration().outputLocation();
+
+        // s3Location は s3://bucket-name/path/to/result.csv の形式
+        String bucket = s3Location.substring(5, s3Location.indexOf("/", 5));
+        String key = s3Location.substring(s3Location.indexOf("/", 5) + 1);
+
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+
+        GetObjectPresignRequest getObjectPresignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(60))
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        PresignedGetObjectRequest presignedGetObjectRequest = s3Presigner.presignGetObject(getObjectPresignRequest);
+        return presignedGetObjectRequest.url().toString();
     }
 
     public String submitQuery(String queryString) {
