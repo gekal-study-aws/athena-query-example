@@ -3,6 +3,7 @@ package cn.gekal.sample.awsathenaapidemo.controller;
 import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryRequest;
 import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryResponse;
 import cn.gekal.sample.awsathenaapidemo.dto.AuditLogQueryStatusResponse;
+import cn.gekal.sample.awsathenaapidemo.dto.AuditLogRecord;
 import cn.gekal.sample.awsathenaapidemo.services.AthenaService;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.athena.model.QueryExecutionState;
@@ -49,7 +50,7 @@ public class AthenaController {
      * 3. チェック結果の取得
      */
     @GetMapping("/results/{queryExecutionId}")
-    public List<List<String>> getQueryResults(@PathVariable String queryExecutionId) {
+    public List<AuditLogRecord> getQueryResults(@PathVariable String queryExecutionId) {
         return athenaService.getQueryResults(queryExecutionId);
     }
 }
