@@ -1,0 +1,19 @@
+@Host=http://localhost:8080
+
+### query
+# @name query
+POST {{Host}}/api/athena/query
+Content-Type: application/json
+
+{
+    "year": "2026",
+    "month": "01",
+    "day": "01",
+    "userId": "user_2"
+}
+
+### status
+GET {{Host}}/api/athena/status/{{query.body.queryId}}
+
+### results
+GET {{Host}}/api/athena/results/{{query.body.queryId}}
