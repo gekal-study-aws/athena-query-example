@@ -10,6 +10,7 @@ export class InfraSdkStack extends cdk.Stack {
 
     // 1. 監査ログ保存用のS3バケット
     const auditLogBucket = new s3.Bucket(this, 'AuditLogBucket', {
+      bucketName: `audit-log-gekal-${cdk.Stack.of(this).region}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -18,6 +19,7 @@ export class InfraSdkStack extends cdk.Stack {
 
     // 2. Athenaのクエリ結果保存用のS3バケット
     const queryResultBucket = new s3.Bucket(this, 'QueryResultBucket', {
+      bucketName: `athena-results-gekal-${cdk.Stack.of(this).region}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       encryption: s3.BucketEncryption.S3_MANAGED,

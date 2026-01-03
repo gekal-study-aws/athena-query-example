@@ -89,6 +89,7 @@ npm run setup-sdk
 ```bash
 # <BucketName> は構築時に出力されたバケット名
 ./scripts/upload_logs.sh <BucketName>
+./scripts/upload_logs.sh "audit-log-gekal-ap-northeast-1"
 ```
 
 ## Athena での確認
