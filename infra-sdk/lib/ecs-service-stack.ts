@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as elbv2_targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
@@ -51,9 +52,11 @@ export class EcsServiceStack extends cdk.Stack {
     });
 
     // コンテナ定義
+    const repository = ecr.Repository.fromRepositoryName(this, 'AppRepository', 'aws-athena-api-demo');
+
     const container = taskDefinition.addContainer('AppContainer', {
-      // 指定されたJava 25イメージを使用
-      image: ecs.ContainerImage.fromRegistry('amazoncorretto:25-alpine'),
+      // ECRのリポジトリからイメージを取得
+      image: ecs.ContainerImage.fromEcrRepository(repository),
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: 'java-app',
         logGroup: logGroup,
