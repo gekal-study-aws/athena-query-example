@@ -4,6 +4,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as elbv2_targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
 
 export class EcsServiceStack extends cdk.Stack {
@@ -80,27 +81,47 @@ export class EcsServiceStack extends cdk.Stack {
       ],
     });
 
-    // 5. REST API用のNetwork Load Balancer
-    // REST APIのVPC LinkにはNLBが必要です。ALBよりは安いですがコストが発生します。
-    const nlb = new elbv2.NetworkLoadBalancer(this, 'AppNlb', {
+    // 5. Application Load Balancer (Internal)
+    // 内部ALBを作成します。
+    const alb = new elbv2.ApplicationLoadBalancer(this, 'AppAlb', {
       vpc,
-      internetFacing: false, // API Gatewayからの接続用なので内部向け
+      internetFacing: false, // 内部ALBに設定
     });
 
-    const listener = nlb.addListener('Listener', {
+    const albListener = alb.addListener('AlbListener', {
       port: 80,
+      open: true,
     });
 
-    listener.addTargets('EcsTarget', {
+    albListener.addTargets('EcsTarget', {
       port: 80,
       targets: [service.loadBalancerTarget({
         containerName: 'AppContainer',
         containerPort: 8080,
       })],
+      healthCheck: {
+        path: '/',
+      },
     });
 
-    // 6. API Gateway (REST API)
-    // REST APIへの変更リクエストに対応。
+    // 6. Network Load Balancer (Internal)
+    // REST APIのVPC LinkはNLBのみをサポートしているため、内部ALBの前にNLBを配置します。
+    const nlb = new elbv2.NetworkLoadBalancer(this, 'AppNlb', {
+      vpc,
+      internetFacing: false,
+    });
+
+    const nlbListener = nlb.addListener('NlbListener', {
+      port: 80,
+    });
+
+    // NLBのターゲットとしてALBを指定
+    nlbListener.addTargets('AlbTarget', {
+      port: 80,
+      targets: [new elbv2_targets.AlbTarget(alb, 80)],
+    });
+
+    // 7. API Gateway (REST API)
     const vpcLink = new apigateway.VpcLink(this, 'VpcLink', {
       targets: [nlb],
     });
