@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib/core';
-import { InfraSdkStack } from '../lib/infra-sdk-stack';
+import {InfraSdkStack} from '../lib/infra-sdk-stack';
+import {EcsServiceStack} from '../lib/ecs-service-stack';
 
 const app = new cdk.App();
 new InfraSdkStack(app, 'InfraSdkStack', {
@@ -17,4 +18,8 @@ new InfraSdkStack(app, 'InfraSdkStack', {
   // env: { account: '123456789012', region: 'us-east-1' },
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+});
+
+new EcsServiceStack(app, 'EcsServiceStack', {
+  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
