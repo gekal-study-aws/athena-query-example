@@ -2,11 +2,12 @@ import * as cdk from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as elbv2_targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 
 export class EcsServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -45,6 +46,36 @@ export class EcsServiceStack extends cdk.Stack {
       },
     });
 
+    const queryResultBucketName = `athena-results-gekal-${cdk.Stack.of(this).region}`;
+    const queryResultBucket = s3.Bucket.fromBucketName(this, 'QueryResultBucketRef', queryResultBucketName);
+
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'athena:StartQueryExecution',
+        'athena:GetQueryExecution',
+        'athena:GetQueryResults',
+        'athena:StopQueryExecution',
+        'athena:GetWorkGroup',
+      ],
+      resources: ['*'],
+    }));
+
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      actions: [
+        's3:GetBucketLocation',
+        's3:ListBucket',
+      ],
+      resources: [queryResultBucket.bucketArn],
+    }));
+
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      actions: [
+        's3:GetObject',
+        's3:PutObject',
+      ],
+      resources: [`${queryResultBucket.bucketArn}/*`],
+    }));
+
     // ロググループ (保持期間を1日に設定してコスト削減)
     const logGroup = new logs.LogGroup(this, 'AppLogGroup', {
       retention: logs.RetentionDays.ONE_DAY,
@@ -52,11 +83,9 @@ export class EcsServiceStack extends cdk.Stack {
     });
 
     // コンテナ定義
-    const repository = ecr.Repository.fromRepositoryName(this, 'AppRepository', 'aws-athena-api-demo');
-
     const container = taskDefinition.addContainer('AppContainer', {
-      // ECRのリポジトリからイメージを取得
-      image: ecs.ContainerImage.fromEcrRepository(repository),
+      // Docker Hubのイメージを使用
+      image: ecs.ContainerImage.fromRegistry('gekal/aws-athena-api-demo:0.0.1-SNAPSHOT'),
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: 'java-app',
         logGroup: logGroup,
