@@ -55,27 +55,28 @@ public class AthenaController {
   @GetMapping("/results-stream/{queryExecutionId}")
   public ResponseBodyEmitter getQueryResultsStream(@PathVariable String queryExecutionId) {
     ResponseBodyEmitter emitter = new ResponseBodyEmitter();
-    ExecutorService executor = Executors.newSingleThreadExecutor();
-    executor.execute(
-        () -> {
-          try {
-            athenaQueryService.getQueryResultsStream(
-                queryExecutionId,
-                auditLog -> {
-                  try {
-                    emitter.send(auditLog);
-                  } catch (Exception e) {
-                    throw new RuntimeException(e);
-                  }
-                });
-            emitter.complete();
-          } catch (Exception e) {
-            emitter.completeWithError(e);
-          } finally {
-            executor.shutdown();
-          }
-        });
-    return emitter;
+    try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+      executor.execute(
+          () -> {
+            try {
+              athenaQueryService.getQueryResultsStream(
+                  queryExecutionId,
+                  auditLog -> {
+                    try {
+                      emitter.send(auditLog);
+                    } catch (Exception e) {
+                      throw new RuntimeException(e);
+                    }
+                  });
+              emitter.complete();
+            } catch (Exception e) {
+              emitter.completeWithError(e);
+            } finally {
+              executor.shutdown();
+            }
+          });
+      return emitter;
+    }
   }
 
   /** 5. ダウンロードURLの取得 */
