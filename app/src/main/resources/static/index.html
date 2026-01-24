@@ -113,6 +113,10 @@
         const queryId = queryIdInput.value;
         if (!queryId) return alert('Please enter Query Execution ID');
 
+        // Remove old save button if exists
+        const oldBtn = document.getElementById('saveResultCsvBtn');
+        if (oldBtn) oldBtn.remove();
+
         try {
             const response = await fetch(`/api/athena/status/${queryId}`);
             const data = await response.json();
@@ -126,10 +130,21 @@
         const queryId = queryIdInput.value;
         if (!queryId) return alert('Please enter Query Execution ID');
 
+        // Remove old save button if exists
+        const oldBtn = document.getElementById('saveResultCsvBtn');
+        if (oldBtn) oldBtn.remove();
+
         try {
             const response = await fetch(`/api/athena/results/${queryId}`);
             const data = await response.json();
             log(data);
+            if (Array.isArray(data) && data.length > 0) {
+                const saveBtn = document.createElement('button');
+                saveBtn.id = 'saveResultCsvBtn';
+                saveBtn.textContent = 'Save this result as CSV';
+                saveBtn.onclick = () => downloadCsv(data, `query_results_${queryId}.csv`);
+                responseOutput.parentNode.insertBefore(saveBtn, responseOutput.nextSibling);
+            }
         } catch (error) {
             log('Error: ' + error.message);
         }
@@ -138,6 +153,10 @@
     async function getResultsStream() {
         const queryId = queryIdInput.value;
         if (!queryId) return alert('Please enter Query Execution ID');
+
+        // Remove old save button if exists
+        const oldBtn = document.getElementById('saveResultCsvBtn');
+        if (oldBtn) oldBtn.remove();
 
         log('Starting stream...');
         responseOutput.textContent = '';
@@ -162,6 +181,10 @@
     async function getResultsStreamAndSaveCsv() {
         const queryId = queryIdInput.value;
         if (!queryId) return alert('Please enter Query Execution ID');
+
+        // Remove old save button if exists
+        const oldBtn = document.getElementById('saveResultCsvBtn');
+        if (oldBtn) oldBtn.remove();
 
         log('Starting stream and saving to CSV...');
         responseOutput.textContent = '';
@@ -196,7 +219,7 @@
                         const jsonStr = buffer.substring(0, boundary + 1);
                         results.push(JSON.parse(jsonStr));
                         buffer = buffer.substring(boundary + 1);
-                        responseOutput.textContent += 'Received 1 row...\n';
+                        responseOutput.textContent += `Received ${results.length} rows...\n`;
                     }
                     // Try parsing the remaining buffer if it's a complete object
                     try {
@@ -204,7 +227,7 @@
                         const obj = JSON.parse(jsonStr);
                         results.push(obj);
                         buffer = '';
-                        responseOutput.textContent += 'Received 1 row...\n';
+                        responseOutput.textContent += `Received ${results.length} rows...\n`;
                     } catch (e) {
                         // Not a complete JSON yet, wait for more data
                     }
@@ -218,7 +241,7 @@
                 try {
                     const obj = JSON.parse(buffer);
                     results.push(obj);
-                    responseOutput.textContent += 'Received 1 row...\n';
+                    responseOutput.textContent += `Received ${results.length} rows...\n`;
                 } catch (e) {
                     console.error('Final buffer parsing error', e);
                 }
@@ -245,9 +268,14 @@
         const firstRowValues = keys.map(k => data[0][k]);
         
         // If every value in the first row is equal to its key, we assume it's a header row
+        // or if it matches certain CamelCase vs snake_case patterns that Athena might use for keys
         const isHeaderRow = keys.every((key, index) => {
             const val = firstRowValues[index];
-            return typeof val === 'string' && val.toLowerCase() === key.toLowerCase();
+            if (typeof val !== 'string') return false;
+            
+            const normalizedVal = val.toLowerCase().replace(/_/g, '');
+            const normalizedKey = key.toLowerCase().replace(/_/g, '');
+            return normalizedVal === normalizedKey;
         });
 
         if (isHeaderRow) {
@@ -284,6 +312,10 @@
     async function getDownloadUrl() {
         const queryId = queryIdInput.value;
         if (!queryId) return alert('Please enter Query Execution ID');
+
+        // Remove old save button if exists
+        const oldBtn = document.getElementById('saveResultCsvBtn');
+        if (oldBtn) oldBtn.remove();
 
         try {
             const response = await fetch(`/api/athena/download-url/${queryId}`);
