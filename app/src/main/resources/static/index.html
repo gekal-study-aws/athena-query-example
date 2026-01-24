@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Athena API Test Page</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        .section {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .section h2 {
+            margin-top: 0;
+        }
+
+        label {
+            display: inline-block;
+            width: 100px;
+        }
+
+        input {
+            margin-bottom: 5px;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 3px;
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<h1>Athena API Test Page</h1>
+
+<div class="section">
+    <h2>1. Submit Query</h2>
+    <label>Year:</label> <input type="text" id="year" value="2026"><br>
+    <label>Month:</label> <input type="text" id="month" value="01"><br>
+    <label>Day:</label> <input type="text" id="day" value="01"><br>
+    <label>User ID:</label> <input type="text" id="userId" value="user_2"><br>
+    <button onclick="submitQuery()">Submit Query</button>
+    <p>Query Execution ID: <span id="queryIdDisplay">-</span></p>
+</div>
+
+<div class="section">
+    <h2>2. Actions for Query</h2>
+    <label>Query ID:</label> <input type="text" id="queryIdInput" style="width: 300px;"><br>
+    <button onclick="checkStatus()">Check Status</button>
+    <button onclick="getResults()">Get Results</button>
+    <button onclick="getResultsStream()">Get Results (Stream)</button>
+    <button onclick="getDownloadUrl()">Get Download URL</button>
+</div>
+
+<div class="section">
+    <h2>Response</h2>
+    <pre id="responseOutput">Waiting for action...</pre>
+</div>
+
+<script>
+    const responseOutput = document.getElementById('responseOutput');
+    const queryIdDisplay = document.getElementById('queryIdDisplay');
+    const queryIdInput = document.getElementById('queryIdInput');
+
+    function log(message) {
+        if (typeof message === 'object') {
+            responseOutput.textContent = JSON.stringify(message, null, 2);
+        } else {
+            responseOutput.textContent = message;
+        }
+    }
+
+    async function submitQuery() {
+        const requestData = {
+            year: document.getElementById('year').value,
+            month: document.getElementById('month').value,
+            day: document.getElementById('day').value,
+            userId: document.getElementById('userId').value
+        };
+
+        try {
+            const response = await fetch('/api/athena/query', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(requestData)
+            });
+            const data = await response.json();
+            log(data);
+            if (data.queryExecutionId) {
+                queryIdDisplay.textContent = data.queryExecutionId;
+                queryIdInput.value = data.queryExecutionId;
+            }
+        } catch (error) {
+            log('Error: ' + error.message);
+        }
+    }
+
+    async function checkStatus() {
+        const queryId = queryIdInput.value;
+        if (!queryId) return alert('Please enter Query Execution ID');
+
+        try {
+            const response = await fetch(`/api/athena/status/${queryId}`);
+            const data = await response.json();
+            log(data);
+        } catch (error) {
+            log('Error: ' + error.message);
+        }
+    }
+
+    async function getResults() {
+        const queryId = queryIdInput.value;
+        if (!queryId) return alert('Please enter Query Execution ID');
+
+        try {
+            const response = await fetch(`/api/athena/results/${queryId}`);
+            const data = await response.json();
+            log(data);
+        } catch (error) {
+            log('Error: ' + error.message);
+        }
+    }
+
+    async function getResultsStream() {
+        const queryId = queryIdInput.value;
+        if (!queryId) return alert('Please enter Query Execution ID');
+
+        log('Starting stream...');
+        responseOutput.textContent = '';
+
+        try {
+            const response = await fetch(`/api/athena/results-stream/${queryId}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, {stream: true});
+                responseOutput.textContent += chunk + '\n';
+            }
+            responseOutput.textContent += '\n--- Stream Finished ---';
+        } catch (error) {
+            log('Error: ' + error.message);
+        }
+    }
+
+    async function getDownloadUrl() {
+        const queryId = queryIdInput.value;
+        if (!queryId) return alert('Please enter Query Execution ID');
+
+        try {
+            const response = await fetch(`/api/athena/download-url/${queryId}`);
+            const data = await response.json();
+            log(data);
+            if (data.downloadUrl) {
+                const link = document.createElement('a');
+                link.href = data.downloadUrl;
+                link.textContent = ' [Download Link]';
+                link.target = '_blank';
+                responseOutput.appendChild(link);
+            }
+        } catch (error) {
+            log('Error: ' + error.message);
+        }
+    }
+</script>
+</body>
+</html>
