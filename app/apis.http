@@ -18,5 +18,8 @@ GET {{Host}}/api/athena/status/{{query.response.body.queryExecutionId}}
 ### results
 GET {{Host}}/api/athena/results/{{query.response.body.queryExecutionId}}
 
+### results(stream)
+GET {{Host}}/api/athena/results-stream/{{query.response.body.queryExecutionId}}
+
 ### download url
 GET {{Host}}/api/athena/download-url/{{query.response.body.queryExecutionId}}
