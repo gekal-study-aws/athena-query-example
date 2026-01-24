@@ -10,6 +10,7 @@ import java.util.Map;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
+import software.amazon.awssdk.services.athena.AthenaClient;
 import software.amazon.awssdk.services.athena.model.*;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -19,7 +20,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 @Repository
 public class AthenaQueryClient implements AthenaQueryRepository {
 
-  private final software.amazon.awssdk.services.athena.AthenaClient athenaClient;
+  private final AthenaClient athenaClient;
   private final S3Presigner s3Presigner;
 
   @Value("${athena.output-location}")
@@ -28,8 +29,7 @@ public class AthenaQueryClient implements AthenaQueryRepository {
   @Value("${athena.database}")
   private String databaseName;
 
-  public AthenaQueryClient(
-      software.amazon.awssdk.services.athena.AthenaClient athenaClient, S3Presigner s3Presigner) {
+  public AthenaQueryClient(AthenaClient athenaClient, S3Presigner s3Presigner) {
     this.athenaClient = athenaClient;
     this.s3Presigner = s3Presigner;
   }
