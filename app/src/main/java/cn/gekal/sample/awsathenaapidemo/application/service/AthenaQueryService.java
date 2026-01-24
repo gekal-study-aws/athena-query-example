@@ -3,6 +3,7 @@ package cn.gekal.sample.awsathenaapidemo.application.service;
 import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
 import cn.gekal.sample.awsathenaapidemo.infrastructure.client.AthenaQueryClient;
 import java.util.List;
+import java.util.function.Consumer;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.athena.model.QueryExecutionState;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -29,6 +30,10 @@ public class AthenaQueryService {
   public List<AuditLog> getQueryResults(String queryExecutionId) {
 
     return athenaClient.getQueryResults(queryExecutionId);
+  }
+
+  public void getQueryResultsStream(String queryExecutionId, Consumer<AuditLog> consumer) {
+    athenaClient.getQueryResultsStream(queryExecutionId, consumer);
   }
 
   public String getDownloadUrl(String queryExecutionId) {

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
@@ -98,6 +99,35 @@ public class AthenaQueryClient implements AthenaQueryRepository {
       results.add(record);
     }
     return results;
+  }
+
+  @Override
+  public void getQueryResultsStream(String queryExecutionId, Consumer<AuditLog> consumer) {
+    GetQueryResultsRequest getQueryResultsRequest =
+        GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId).build();
+
+    Iterable<GetQueryResultsResponse> responses =
+        athenaClient.getQueryResultsPaginator(getQueryResultsRequest);
+
+    boolean isFirstPage = true;
+    for (GetQueryResultsResponse response : responses) {
+      List<ColumnInfo> columnInfos = response.resultSet().resultSetMetadata().columnInfo();
+      List<Row> rows = response.resultSet().rows();
+
+      int startIndex = 0;
+      if (isFirstPage && !rows.isEmpty()) {
+        Row firstRow = rows.getFirst();
+        if (firstRow.data().getFirst().varCharValue().equalsIgnoreCase("year")) {
+          startIndex = 1;
+        }
+      }
+
+      for (int i = startIndex; i < rows.size(); i++) {
+        AuditLog record = createAuditLog(rows, i, columnInfos);
+        consumer.accept(record);
+      }
+      isFirstPage = false;
+    }
   }
 
   private static @NonNull AuditLog createAuditLog(
