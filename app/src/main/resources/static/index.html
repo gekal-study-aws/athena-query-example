@@ -62,6 +62,7 @@
     <button onclick="checkStatus()">Check Status</button>
     <button onclick="getResults()">Get Results</button>
     <button onclick="getResultsStream()">Get Results (Stream)</button>
+    <button onclick="getResultsStreamAndSaveCsv()">Stream and Save CSV</button>
     <button onclick="getDownloadUrl()">Get Download URL</button>
 </div>
 
@@ -156,6 +157,113 @@
         } catch (error) {
             log('Error: ' + error.message);
         }
+    }
+
+    async function getResultsStreamAndSaveCsv() {
+        const queryId = queryIdInput.value;
+        if (!queryId) return alert('Please enter Query Execution ID');
+
+        log('Starting stream and saving to CSV...');
+        responseOutput.textContent = '';
+
+        try {
+            const response = await fetch(`/api/athena/results-stream/${queryId}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            let results = [];
+            let buffer = '';
+
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, {stream: true});
+                
+                // ResponseBodyEmitter might send multiple JSON objects
+                // In Spring, default serialization for multiple objects in ResponseBodyEmitter
+                // is often just concatenating them or using a specific delimiter if configured.
+                // Assuming they are concatenated JSON objects for now, or similar.
+                // Actually, ResponseBodyEmitter with Jackson usually sends them as individual JSON objects.
+                
+                // Simple attempt to parse the buffer as individual objects
+                // This is a naive implementation; for production, a proper NDJSON parser would be better.
+                try {
+                    // Try to find individual JSON objects in the buffer
+                    // This assumes objects don't contain '}{' inside strings.
+                    let boundary;
+                    while ((boundary = buffer.indexOf('}{')) !== -1) {
+                        const jsonStr = buffer.substring(0, boundary + 1);
+                        results.push(JSON.parse(jsonStr));
+                        buffer = buffer.substring(boundary + 1);
+                        responseOutput.textContent += 'Received 1 row...\n';
+                    }
+                    // Try parsing the remaining buffer if it's a complete object
+                    try {
+                        const jsonStr = buffer;
+                        const obj = JSON.parse(jsonStr);
+                        results.push(obj);
+                        buffer = '';
+                        responseOutput.textContent += 'Received 1 row...\n';
+                    } catch (e) {
+                        // Not a complete JSON yet, wait for more data
+                    }
+                } catch (error) {
+                    console.error('Parsing error', error);
+                }
+            }
+
+            // If there's any remaining buffer, try to parse it
+            if (buffer.trim()) {
+                try {
+                    const obj = JSON.parse(buffer);
+                    results.push(obj);
+                    responseOutput.textContent += 'Received 1 row...\n';
+                } catch (e) {
+                    console.error('Final buffer parsing error', e);
+                }
+            }
+
+            if (results.length > 0) {
+                downloadCsv(results, `query_results_${queryId}.csv`);
+                responseOutput.textContent += `\n--- Finished. Downloaded ${results.length} rows ---`;
+            } else {
+                responseOutput.textContent += '\n--- Finished. No data received ---';
+            }
+        } catch (error) {
+            log('Error: ' + error.message);
+        }
+    }
+
+    function downloadCsv(data, filename) {
+        if (data.length === 0) return;
+
+        // Extract headers from the first object, excluding 'otherDetails' for simplicity
+        // or we could flatten it.
+        const headers = Object.keys(data[0]).filter(k => k !== 'otherDetails');
+        
+        const csvRows = [];
+        csvRows.push(headers.join(','));
+
+        for (const row of data) {
+            const values = headers.map(header => {
+                const val = row[header] === null || row[header] === undefined ? '' : row[header];
+                const escaped = ('' + val).replace(/"/g, '""');
+                return `"${escaped}"`;
+            });
+            csvRows.push(values.join(','));
+        }
+
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     async function getDownloadUrl() {
