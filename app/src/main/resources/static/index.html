@@ -238,14 +238,29 @@
     function downloadCsv(data, filename) {
         if (data.length === 0) return;
 
-        // Extract headers from the first object, excluding 'otherDetails' for simplicity
-        // or we could flatten it.
-        const headers = Object.keys(data[0]).filter(k => k !== 'otherDetails');
+        // Filter out header row if it exists in the data
+        // Check if the first row has values identical to the keys (this might happen if Athena returns a header row)
+        let startIndex = 0;
+        const keys = Object.keys(data[0]).filter(k => k !== 'otherDetails');
+        const firstRowValues = keys.map(k => data[0][k]);
+        
+        // If every value in the first row is equal to its key, we assume it's a header row
+        const isHeaderRow = keys.every((key, index) => {
+            const val = firstRowValues[index];
+            return typeof val === 'string' && val.toLowerCase() === key.toLowerCase();
+        });
+
+        if (isHeaderRow) {
+            startIndex = 1;
+        }
+
+        const headers = keys;
         
         const csvRows = [];
-        csvRows.push(headers.join(','));
+        csvRows.push(headers.map(h => `"${h}"`).join(','));
 
-        for (const row of data) {
+        for (let i = startIndex; i < data.length; i++) {
+            const row = data[i];
             const values = headers.map(header => {
                 const val = row[header] === null || row[header] === undefined ? '' : row[header];
                 const escaped = ('' + val).replace(/"/g, '""');
