@@ -31,15 +31,15 @@ export class EcsServiceStack extends cdk.Stack {
     // 2. ECSクラスター
     const cluster = new ecs.Cluster(this, 'EcsCluster', {
       vpc: vpc,
-      containerInsights: false, // コスト削減のため無効化
+      containerInsightsV2: ecs.ContainerInsights.DISABLED,   // コスト削減のため無効化
     });
 
     // 3. タスク定義
     // Java 25を使用 (2026年時点)
     // Javaアプリはメモリを消費しやすいため、最小構成の0.25 vCPU / 0.5 GB RAMから始め、必要に応じて調整します。
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'JavaAppTaskDef', {
-      memoryLimitMiB: 512,
-      cpu: 256,
+      memoryLimitMiB: 1024,
+      cpu: 512,
       runtimePlatform: {
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
         cpuArchitecture: ecs.CpuArchitecture.X86_64,
