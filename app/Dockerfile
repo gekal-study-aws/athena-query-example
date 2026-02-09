@@ -26,7 +26,7 @@ WORKDIR /builder
 COPY --from=builder /app/build/libs/*.jar app.jar
 
 # JARを展開 (dependencies, spring-boot-loader, snapshot-dependencies, application)
-RUN java -Djarmode=tools -jar app.jar extract --layers --launcher
+RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 # -----------------------------------------------------------------------------
 # Stage 3: Runtime Image
@@ -36,11 +36,11 @@ FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 # 変更頻度の低いものから順に記述することで、Dockerのレイヤーキャッシュを最大化
-COPY --from=extractor /builder/app/dependencies/ ./
-COPY --from=extractor /builder/app/spring-boot-loader/ ./
-COPY --from=extractor /builder/app/snapshot-dependencies/ ./
-COPY --from=extractor /builder/app/application/ ./
+COPY --from=extractor /builder/extracted/dependencies/ ./
+COPY --from=extractor /builder/extracted/spring-boot-loader/ ./
+COPY --from=extractor /builder/extracted/snapshot-dependencies/ ./
+COPY --from=extractor /builder/extracted/application/ ./
 
 ENV JAVA_OPTS=""
 
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
