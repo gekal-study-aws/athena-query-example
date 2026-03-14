@@ -1,0 +1,3 @@
+rootProject.name = 'athena-query-example'
+include 'backend'
+include 'frontend'
