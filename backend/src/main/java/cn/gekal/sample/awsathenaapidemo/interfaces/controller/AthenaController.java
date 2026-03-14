@@ -1,18 +1,15 @@
 package cn.gekal.sample.awsathenaapidemo.interfaces.controller;
 
 import cn.gekal.sample.awsathenaapidemo.application.service.AthenaQueryService;
-import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogDownloadUrlResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryRequest;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
-import software.amazon.awssdk.services.athena.model.QueryExecutionState;
 
 @RestController
 @RequestMapping("/api/athena")

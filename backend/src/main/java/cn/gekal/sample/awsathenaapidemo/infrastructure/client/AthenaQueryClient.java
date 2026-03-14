@@ -68,7 +68,9 @@ public class AthenaQueryClient implements AthenaQueryRepository {
 
     QueryExecution queryExecution = getQueryExecutionResponse.queryExecution();
     Long dataScannedInBytes =
-        queryExecution.statistics() != null ? queryExecution.statistics().dataScannedInBytes() : null;
+        queryExecution.statistics() != null
+            ? queryExecution.statistics().dataScannedInBytes()
+            : null;
 
     Long totalRowCount = null;
     if (QueryExecutionState.SUCCEEDED.equals(queryExecution.status().state())) {
@@ -76,15 +78,15 @@ public class AthenaQueryClient implements AthenaQueryRepository {
           athenaClient.getQueryResults(
               GetQueryResultsRequest.builder()
                   .queryExecutionId(queryExecutionId)
-                  .maxResults(1)
+                  .maxResults(2)
                   .build());
-      if (resultsResponse.resultSet().rows().size() > 1) {
+      if (!resultsResponse.resultSet().rows().isEmpty()) {
         // ヘッダー行を考慮してデータ行を取得
         List<ColumnInfo> columnInfos = resultsResponse.resultSet().resultSetMetadata().columnInfo();
         List<Row> rows = resultsResponse.resultSet().rows();
-        int dataIndex = 0;
+        int dataIndex;
         // 1行目がヘッダーかチェック
-        Row firstRow = rows.get(0);
+        Row firstRow = rows.getFirst();
         boolean isHeader = true;
         for (int j = 0; j < Math.min(columnInfos.size(), firstRow.data().size()); j++) {
           if (!firstRow.data().get(j).varCharValue().equalsIgnoreCase(columnInfos.get(j).name())) {
@@ -135,6 +137,16 @@ public class AthenaQueryClient implements AthenaQueryRepository {
     List<AuditLog> results = new ArrayList<>();
 
     // rowsの0番目がヘッダーかどうか判定（カラム名と一致するか）
+    int startIndex = getStartIndex(nextToken, rows, columnInfos);
+
+    for (int i = startIndex; i < rows.size(); i++) {
+      AuditLog record = createAuditLog(rows, i, columnInfos);
+      results.add(record);
+    }
+    return new AuditLogQueryResultResponse(results, getQueryResultsResponse.nextToken());
+  }
+
+  private static int getStartIndex(String nextToken, List<Row> rows, List<ColumnInfo> columnInfos) {
     int startIndex = 0;
     if (nextToken == null || nextToken.isEmpty()) {
       if (!rows.isEmpty()) {
@@ -151,12 +163,7 @@ public class AthenaQueryClient implements AthenaQueryRepository {
         }
       }
     }
-
-    for (int i = startIndex; i < rows.size(); i++) {
-      AuditLog record = createAuditLog(rows, i, columnInfos);
-      results.add(record);
-    }
-    return new AuditLogQueryResultResponse(results, getQueryResultsResponse.nextToken());
+    return startIndex;
   }
 
   @Override

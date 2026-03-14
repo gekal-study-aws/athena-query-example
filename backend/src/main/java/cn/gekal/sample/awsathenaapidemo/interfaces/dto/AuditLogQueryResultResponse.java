@@ -1,4 +1,5 @@
 package cn.gekal.sample.awsathenaapidemo.interfaces.dto;
+
 import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
 import java.util.List;
 

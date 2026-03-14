@@ -71,7 +71,7 @@ export default function AthenaSearch() {
       setQueryExecutionId(data.queryExecutionId);
       setCurrentResults([]);
       setTokens([null]);
-      setPaginationModel({ page: 0, pageSize: 10 });
+      setPaginationModel({ ...paginationModel,page: 0 });
     },
   });
 
