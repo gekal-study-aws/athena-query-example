@@ -34,7 +34,7 @@ public class AthenaController {
             "SELECT * FROM audit_log_db.audit_logs WHERE year = '%s' AND month = '%s' AND day = '%s'",
             request.getYear(), request.getMonth(), request.getDay()));
 
-    if (request.getUserId() != null && !request.getUserId().trim().isEmpty()) {
+    if (request.isUserSpecified()) {
       sqlBuilder.append(String.format(" AND user_id = '%s'", request.getUserId()));
     }
 

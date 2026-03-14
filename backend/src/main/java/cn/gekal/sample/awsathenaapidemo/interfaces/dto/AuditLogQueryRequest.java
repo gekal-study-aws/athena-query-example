@@ -6,6 +6,10 @@ public class AuditLogQueryRequest {
   private String day;
   private String userId;
 
+  public boolean isUserSpecified() {
+    return userId != null && !userId.trim().isEmpty();
+  }
+
   public String getYear() {
     return year;
   }

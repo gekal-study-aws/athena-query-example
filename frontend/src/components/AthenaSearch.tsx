@@ -49,8 +49,8 @@ export default function AthenaSearch() {
   const [userId, setUserId] = useState('user_001');
 
   const [queryExecutionId, setQueryExecutionId] = useState<string | null>(null);
-  const [allResults, setAllResults] = useState<AuditLog[]>([]);
-  const [nextToken, setNextToken] = useState<string | null>(null);
+  const [currentResults, setCurrentResults] = useState<AuditLog[]>([]);
+  const [tokens, setTokens] = useState<(string | null)[]>([null]); // tokens[page] stores the nextToken for page+1
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 10,
@@ -69,8 +69,8 @@ export default function AthenaSearch() {
     },
     onSuccess: (data) => {
       setQueryExecutionId(data.queryExecutionId);
-      setAllResults([]);
-      setNextToken(null);
+      setCurrentResults([]);
+      setTokens([null]);
       setPaginationModel({ page: 0, pageSize: 10 });
     },
   });
@@ -83,7 +83,7 @@ export default function AthenaSearch() {
       if (!res.ok) throw new Error('Failed to check status');
       return res.json();
     },
-    enabled: !!queryExecutionId && allResults.length === 0,
+    enabled: !!queryExecutionId && currentResults.length === 0 && paginationModel.page === 0,
     refetchInterval: (query) => {
       const state = query.state.data?.state;
       if (state === 'SUCCEEDED' || state === 'FAILED' || state === 'CANCELLED') {
@@ -100,11 +100,12 @@ export default function AthenaSearch() {
 
   // 3. 結果取得 (ページネーション対応)
   const resultsQuery = useQuery({
-    queryKey: ['athenaResults', queryExecutionId, nextToken],
+    queryKey: ['athenaResults', queryExecutionId, paginationModel.page, paginationModel.pageSize],
     queryFn: async () => {
-      let url = `/api/athena/results/${queryExecutionId}?maxResults=50`;
-      if (nextToken) {
-        url += `&nextToken=${encodeURIComponent(nextToken)}`;
+      const currentToken = tokens[paginationModel.page];
+      let url = `/api/athena/results/${queryExecutionId}?maxResults=${paginationModel.pageSize}`;
+      if (currentToken) {
+        url += `&nextToken=${encodeURIComponent(currentToken)}`;
       }
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch results');
@@ -112,45 +113,37 @@ export default function AthenaSearch() {
       return {
         results: data.results.map((item: AuditLog, index: number) => ({
           ...item,
-          id: `${allResults.length + index}`
+          id: `${paginationModel.page * paginationModel.pageSize + index}`
         })),
         nextToken: data.nextToken
       };
     },
-    enabled: isFinished && (allResults.length === 0 || !!nextToken),
+    enabled: isFinished && (paginationModel.page === 0 || !!tokens[paginationModel.page]),
   });
 
-  // 結果が取得できたら蓄積する
+  // 結果が取得できたら現在の表示データを更新し、次のページのトークンを保存する
   React.useEffect(() => {
     if (resultsQuery.data) {
-      setAllResults(prev => [...prev, ...resultsQuery.data.results]);
-      // 自動的に次のページを取得しない（ユーザーの操作を待つか、DataGridのページネーションに任せる）
+      setCurrentResults(resultsQuery.data.results);
+      if (resultsQuery.data.nextToken) {
+        setTokens(prev => {
+          const newTokens = [...prev];
+          newTokens[paginationModel.page + 1] = resultsQuery.data!.nextToken!;
+          return newTokens;
+        });
+      }
     }
-  }, [resultsQuery.data]);
+  }, [resultsQuery.data, paginationModel.page]);
 
   const handleSearch = () => {
     setQueryExecutionId(null);
-    setAllResults([]);
-    setNextToken(null);
+    setCurrentResults([]);
+    setTokens([null]);
+    setPaginationModel({ page: 0, pageSize: 10 });
     submitMutation.mutate({ year, month, day, userId });
   };
 
-  const handleFetchNext = () => {
-    if (resultsQuery.data?.nextToken) {
-      setNextToken(resultsQuery.data.nextToken);
-    }
-  };
-
-  // DataGridのページが最後に近づいたら次をフェッチする
-  React.useEffect(() => {
-    const lastLoadedIndex = allResults.length;
-    const currentMaxIndex = (paginationModel.page + 1) * paginationModel.pageSize;
-    if (currentMaxIndex > lastLoadedIndex && resultsQuery.data?.nextToken && !resultsQuery.isFetching) {
-      handleFetchNext();
-    }
-  }, [paginationModel, allResults.length, resultsQuery.data?.nextToken, resultsQuery.isFetching]);
-
-  const loading = submitMutation.isPending || (statusQuery.isLoading && !!queryExecutionId && allResults.length === 0) || (statusQuery.data && !isFinished && !isFailed);
+  const loading = submitMutation.isPending || (statusQuery.isLoading && !!queryExecutionId && currentResults.length === 0 && paginationModel.page === 0) || (statusQuery.data && !isFinished && !isFailed);
   const fetchingResults = resultsQuery.isFetching;
 
   return (
@@ -218,7 +211,7 @@ export default function AthenaSearch() {
         </Alert>
       )}
 
-      {isFinished && allResults.length === 0 && resultsQuery.isFetching && (
+      {isFinished && currentResults.length === 0 && resultsQuery.isFetching && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Fetching results...
         </Alert>
@@ -232,14 +225,14 @@ export default function AthenaSearch() {
 
       <Paper sx={{ height: 400, width: '100%' }}>
         <DataGrid
-          rows={allResults}
+          rows={currentResults}
           columns={columns}
-          loading={fetchingResults && allResults.length === 0}
+          loading={fetchingResults}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
           pageSizeOptions={[5, 10, 25]}
           disableRowSelectionOnClick
-          rowCount={resultsQuery.data?.nextToken ? allResults.length + 1 : allResults.length}
+          rowCount={resultsQuery.data?.nextToken ? (paginationModel.page + 1) * paginationModel.pageSize + 1 : (paginationModel.page * paginationModel.pageSize) + currentResults.length}
           paginationMode="server"
         />
       </Paper>
