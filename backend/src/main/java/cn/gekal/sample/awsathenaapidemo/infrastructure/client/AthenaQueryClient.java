@@ -67,9 +67,49 @@ public class AthenaQueryClient implements AthenaQueryRepository {
         athenaClient.getQueryExecution(getQueryExecutionRequest);
 
     QueryExecution queryExecution = getQueryExecutionResponse.queryExecution();
+    Long dataScannedInBytes =
+        queryExecution.statistics() != null ? queryExecution.statistics().dataScannedInBytes() : null;
+
+    Long totalRowCount = null;
+    if (QueryExecutionState.SUCCEEDED.equals(queryExecution.status().state())) {
+      GetQueryResultsResponse resultsResponse =
+          athenaClient.getQueryResults(
+              GetQueryResultsRequest.builder()
+                  .queryExecutionId(queryExecutionId)
+                  .maxResults(1)
+                  .build());
+      if (resultsResponse.resultSet().rows().size() > 1) {
+        // ヘッダー行を考慮してデータ行を取得
+        List<ColumnInfo> columnInfos = resultsResponse.resultSet().resultSetMetadata().columnInfo();
+        List<Row> rows = resultsResponse.resultSet().rows();
+        int dataIndex = 0;
+        // 1行目がヘッダーかチェック
+        Row firstRow = rows.get(0);
+        boolean isHeader = true;
+        for (int j = 0; j < Math.min(columnInfos.size(), firstRow.data().size()); j++) {
+          if (!firstRow.data().get(j).varCharValue().equalsIgnoreCase(columnInfos.get(j).name())) {
+            isHeader = false;
+            break;
+          }
+        }
+        dataIndex = isHeader ? 1 : 0;
+        if (rows.size() > dataIndex) {
+          // full_count カラムを探す
+          for (int j = 0; j < columnInfos.size(); j++) {
+            if ("full_count".equalsIgnoreCase(columnInfos.get(j).name())) {
+              String val = rows.get(dataIndex).data().get(j).varCharValue();
+              if (val != null) {
+                totalRowCount = Long.parseLong(val);
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+
     return new AuditLogQueryStatusResponse(
-        queryExecution.status().state(),
-        queryExecution.statistics() != null ? queryExecution.statistics().dataScannedInBytes() : null);
+        queryExecution.status().state(), dataScannedInBytes, totalRowCount);
   }
 
   @Override
@@ -192,6 +232,9 @@ public class AthenaQueryClient implements AthenaQueryRepository {
           break;
         case "status":
           record.setStatus(value);
+          break;
+        case "full_count":
+          // full_countはAuditLogモデルには含めず、無視する（または必要ならMapに入れる）
           break;
         default:
           otherDetails.put(columnName, value);

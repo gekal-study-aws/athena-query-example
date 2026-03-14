@@ -28,17 +28,22 @@ public class AthenaController {
   @PostMapping("/query")
   public AuditLogQueryResponse submitQuery(@RequestBody AuditLogQueryRequest request) {
     // 監査ログ検索用のSQLを構築
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append(
+    String baseWhere =
         String.format(
-            "SELECT * FROM audit_log_db.audit_logs WHERE year = '%s' AND month = '%s' AND day = '%s'",
-            request.getYear(), request.getMonth(), request.getDay()));
+            "WHERE year = '%s' AND month = '%s' AND day = '%s'",
+            request.getYear(), request.getMonth(), request.getDay());
 
     if (request.isUserSpecified()) {
-      sqlBuilder.append(String.format(" AND user_id = '%s'", request.getUserId()));
+      baseWhere += String.format(" AND user_id = '%s'", request.getUserId());
     }
 
-    String queryExecutionId = athenaQueryService.submitQuery(sqlBuilder.toString());
+    // トータル件数取得用のクエリとデータ取得用のクエリを結合（または個別に発行）
+    // 効率のため、ウィンドウ関数を使用して1つのクエリでトータル件数も取得する
+    String sql =
+        String.format(
+            "SELECT *, count(*) OVER() as full_count FROM audit_log_db.audit_logs %s", baseWhere);
+
+    String queryExecutionId = athenaQueryService.submitQuery(sql);
 
     return new AuditLogQueryResponse(queryExecutionId);
   }

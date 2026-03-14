@@ -5,14 +5,17 @@ import software.amazon.awssdk.services.athena.model.QueryExecutionState;
 public class AuditLogQueryStatusResponse {
   private QueryExecutionState state;
   private Long dataScannedInBytes;
+  private Long totalRowCount;
 
   public AuditLogQueryStatusResponse(QueryExecutionState state) {
     this.state = state;
   }
 
-  public AuditLogQueryStatusResponse(QueryExecutionState state, Long dataScannedInBytes) {
+  public AuditLogQueryStatusResponse(
+      QueryExecutionState state, Long dataScannedInBytes, Long totalRowCount) {
     this.state = state;
     this.dataScannedInBytes = dataScannedInBytes;
+    this.totalRowCount = totalRowCount;
   }
 
   public QueryExecutionState getState() {
@@ -29,5 +32,13 @@ public class AuditLogQueryStatusResponse {
 
   public void setDataScannedInBytes(Long dataScannedInBytes) {
     this.dataScannedInBytes = dataScannedInBytes;
+  }
+
+  public Long getTotalRowCount() {
+    return totalRowCount;
+  }
+
+  public void setTotalRowCount(Long totalRowCount) {
+    this.totalRowCount = totalRowCount;
   }
 }

@@ -95,6 +95,7 @@ export default function AthenaSearch() {
 
   const queryState = statusQuery.data?.state;
   const dataScanned = statusQuery.data?.dataScannedInBytes;
+  const totalRowCount = statusQuery.data?.totalRowCount;
   const isFinished = queryState === 'SUCCEEDED';
   const isFailed = queryState === 'FAILED' || queryState === 'CANCELLED';
 
@@ -187,9 +188,16 @@ export default function AthenaSearch() {
           </Button>
         </Stack>
         {dataScanned !== undefined && (
-          <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
-            Data scanned: {(dataScanned / (1024 * 1024)).toFixed(2)} MB
-          </Typography>
+          <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="caption" display="block" sx={{ color: 'text.secondary' }}>
+              Data scanned: {(dataScanned / (1024 * 1024)).toFixed(2)} MB
+            </Typography>
+            {totalRowCount !== undefined && totalRowCount !== null && (
+              <Typography variant="caption" display="block" sx={{ color: 'text.secondary' }}>
+                Total records: {totalRowCount}
+              </Typography>
+            )}
+          </Stack>
         )}
       </Paper>
 
@@ -232,7 +240,7 @@ export default function AthenaSearch() {
           onPaginationModelChange={setPaginationModel}
           pageSizeOptions={[5, 10, 25]}
           disableRowSelectionOnClick
-          rowCount={resultsQuery.data?.nextToken ? (paginationModel.page + 1) * paginationModel.pageSize + 1 : (paginationModel.page * paginationModel.pageSize) + currentResults.length}
+          rowCount={totalRowCount !== undefined && totalRowCount !== null ? Number(totalRowCount) : (resultsQuery.data?.nextToken ? (paginationModel.page + 1) * paginationModel.pageSize + 1 : (paginationModel.page * paginationModel.pageSize) + currentResults.length)}
           paginationMode="server"
         />
       </Paper>
