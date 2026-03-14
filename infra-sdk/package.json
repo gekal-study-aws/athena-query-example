@@ -8,7 +8,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "setup-sdk": "ts-node bin/setup-sdk.ts"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

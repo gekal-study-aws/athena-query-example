@@ -41,15 +41,19 @@ infra-sdk/
 最初に依存関係をインストールします。
 
 ```bash
+cd infra-sdk
 npm install
 ```
 
 ### 方法 1: AWS CDK によるデプロイ
 
-標準的な IaC 手順です。
+AWS CDK を使用した標準的な IaC 手順です。
 
 ```bash
-# デプロイ (初回は cdk bootstrap が必要)
+# 初回のみ必要: CDK 実行環境のセットアップ
+npx cdk bootstrap
+
+# デプロイの実行
 npx cdk deploy
 ```
 
@@ -57,15 +61,17 @@ npx cdk deploy
 
 ### 方法 2: AWS SDK による構築
 
-プログラムから直接リソースを作成します。
+AWS SDK (TypeScript) を使用して、プログラムから直接リソースを作成します。
 
 ```bash
-# AWSアカウントIDを環境変数に設定
+# AWSアカウントIDを環境変数に設定（自動取得の例）
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # 構築スクリプトの実行
 npm run setup-sdk
 ```
+
+成功すると、作成されたバケット名やデータベース名が表示されます。
 
 ## データの投入
 
