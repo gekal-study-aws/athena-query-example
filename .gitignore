@@ -1,6 +1,7 @@
+.gradle
+
 ### IntelliJ IDEA ###
 .idea
 
 ### VS Code ###
 .vscode/
-

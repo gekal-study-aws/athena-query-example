@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 interface AuditLog {
   year: string;
@@ -40,60 +41,66 @@ export default function AthenaSearch() {
   const [month, setMonth] = useState('01');
   const [day, setDay] = useState('01');
   const [userId, setUserId] = useState('user-001');
-  
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [rows, setRows] = useState<AuditLog[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = async () => {
-    setLoading(true);
-    setError(null);
-    setRows([]);
-    setStatus('Submitting query...');
+  const [queryExecutionId, setQueryExecutionId] = useState<string | null>(null);
 
-    try {
-      // 1. Submit Query
-      const queryRes = await fetch('/api/athena/query', {
+  // 1. クエリ実行ミューテーション
+  const submitMutation = useMutation({
+    mutationFn: async (params: { year: string; month: string; day: string; userId: string }) => {
+      const res = await fetch('/api/athena/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, month, day, userId }),
+        body: JSON.stringify(params),
       });
-      if (!queryRes.ok) throw new Error('Failed to submit query');
-      const { queryExecutionId } = await queryRes.json();
+      if (!res.ok) throw new Error('Failed to submit query');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setQueryExecutionId(data.queryExecutionId);
+    },
+  });
 
-      // 2. Poll Status
-      let isFinished = false;
-      while (!isFinished) {
-        setStatus(`Query running... (ID: ${queryExecutionId})`);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        
-        const statusRes = await fetch(`/api/athena/status/${queryExecutionId}`);
-        if (!statusRes.ok) throw new Error('Failed to check status');
-        const { state } = await statusRes.json();
-
-        if (state === 'SUCCEEDED') {
-          isFinished = true;
-        } else if (state === 'FAILED' || state === 'CANCELLED') {
-          throw new Error(`Query ${state.toLowerCase()}`);
-        }
+  // 2. ステータスポーリング
+  const statusQuery = useQuery({
+    queryKey: ['athenaStatus', queryExecutionId],
+    queryFn: async () => {
+      const res = await fetch(`/api/athena/status/${queryExecutionId}`);
+      if (!res.ok) throw new Error('Failed to check status');
+      return res.json();
+    },
+    enabled: !!queryExecutionId,
+    refetchInterval: (query) => {
+      const state = query.state.data?.state;
+      if (state === 'SUCCEEDED' || state === 'FAILED' || state === 'CANCELLED') {
+        return false;
       }
+      return 2000;
+    },
+  });
 
-      // 3. Get Results
-      setStatus('Fetching results...');
-      const resultsRes = await fetch(`/api/athena/results/${queryExecutionId}`);
-      if (!resultsRes.ok) throw new Error('Failed to fetch results');
-      const data = await resultsRes.json();
-      
-      setRows(data.map((item: AuditLog, index: number) => ({ ...item, id: index })));
-      setStatus(null);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-      setStatus(null);
-    } finally {
-      setLoading(false);
-    }
+  const queryState = statusQuery.data?.state;
+  const isFinished = queryState === 'SUCCEEDED';
+  const isFailed = queryState === 'FAILED' || queryState === 'CANCELLED';
+
+  // 3. 結果取得
+  const resultsQuery = useQuery({
+    queryKey: ['athenaResults', queryExecutionId],
+    queryFn: async () => {
+      const res = await fetch(`/api/athena/results/${queryExecutionId}`);
+      if (!res.ok) throw new Error('Failed to fetch results');
+      const data = await res.json();
+      return data.map((item: AuditLog, index: number) => ({ ...item, id: index }));
+    },
+    enabled: isFinished,
+  });
+
+  const handleSearch = () => {
+    setQueryExecutionId(null);
+    submitMutation.mutate({ year, month, day, userId });
   };
+
+  const loading = submitMutation.isPending || (statusQuery.isLoading && !!queryExecutionId) || (statusQuery.data && !isFinished && !isFailed);
+  const fetchingResults = resultsQuery.isFetching;
 
   return (
     <Box sx={{ width: '100%', mt: 4 }}>
@@ -128,31 +135,50 @@ export default function AthenaSearch() {
           />
           <Button
             variant="contained"
-            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
+            startIcon={(loading || fetchingResults) ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
             onClick={handleSearch}
-            disabled={loading}
+            disabled={loading || fetchingResults}
           >
             Search
           </Button>
         </Stack>
       </Paper>
 
-      {status && (
+      {submitMutation.isPending && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          {status}
+          Submitting query...
         </Alert>
       )}
 
-      {error && (
+      {queryExecutionId && !isFinished && !isFailed && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Query running... (ID: {queryExecutionId}) - State: {queryState || 'PENDING'}
+        </Alert>
+      )}
+
+      {isFailed && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          Query failed or cancelled. (ID: {queryExecutionId})
+        </Alert>
+      )}
+
+      {isFinished && !resultsQuery.data && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Fetching results...
+        </Alert>
+      )}
+
+      {(submitMutation.error || statusQuery.error || resultsQuery.error) && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {(submitMutation.error || statusQuery.error || resultsQuery.error)?.message || 'An error occurred'}
         </Alert>
       )}
 
       <Paper sx={{ height: 400, width: '100%' }}>
         <DataGrid
-          rows={rows}
+          rows={resultsQuery.data || []}
           columns={columns}
+          loading={fetchingResults}
           initialState={{
             pagination: {
               paginationModel: { page: 0, pageSize: 5 },
