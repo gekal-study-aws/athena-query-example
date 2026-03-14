@@ -124,7 +124,12 @@ public class AthenaQueryClient implements AthenaQueryRepository {
       requestBuilder.nextToken(nextToken);
     }
     if (maxResults != null) {
-      requestBuilder.maxResults(maxResults);
+      if (nextToken == null || nextToken.isEmpty()) {
+        // consider header row
+        requestBuilder.maxResults(maxResults + 1);
+      } else {
+        requestBuilder.maxResults(maxResults);
+      }
     }
 
     GetQueryResultsResponse getQueryResultsResponse =
