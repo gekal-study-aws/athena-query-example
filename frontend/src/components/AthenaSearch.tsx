@@ -9,7 +9,7 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Stack
+  Stack,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
@@ -71,7 +71,7 @@ export default function AthenaSearch() {
       setQueryExecutionId(data.queryExecutionId);
       setCurrentResults([]);
       setTokens([null]);
-      setPaginationModel({ ...paginationModel,page: 0 });
+      setPaginationModel({ ...paginationModel, page: 0 });
     },
   });
 
@@ -114,9 +114,9 @@ export default function AthenaSearch() {
       return {
         results: data.results.map((item: AuditLog, index: number) => ({
           ...item,
-          id: `${paginationModel.page * paginationModel.pageSize + index}`
+          id: `${paginationModel.page * paginationModel.pageSize + index}`,
         })),
-        nextToken: data.nextToken
+        nextToken: data.nextToken,
       };
     },
     enabled: isFinished && (paginationModel.page === 0 || !!tokens[paginationModel.page]),
@@ -127,7 +127,7 @@ export default function AthenaSearch() {
     if (resultsQuery.data) {
       setCurrentResults(resultsQuery.data.results);
       if (resultsQuery.data.nextToken) {
-        setTokens(prev => {
+        setTokens((prev) => {
           const newTokens = [...prev];
           newTokens[paginationModel.page + 1] = resultsQuery.data!.nextToken!;
           return newTokens;
@@ -140,11 +140,17 @@ export default function AthenaSearch() {
     setQueryExecutionId(null);
     setCurrentResults([]);
     setTokens([null]);
-    setPaginationModel({ page: 0, pageSize: 10 });
+    setPaginationModel({ ...paginationModel, page: 0 });
     submitMutation.mutate({ year, month, day, userId });
   };
 
-  const loading = submitMutation.isPending || (statusQuery.isLoading && !!queryExecutionId && currentResults.length === 0 && paginationModel.page === 0) || (statusQuery.data && !isFinished && !isFailed);
+  const loading =
+    submitMutation.isPending ||
+    (statusQuery.isLoading &&
+      !!queryExecutionId &&
+      currentResults.length === 0 &&
+      paginationModel.page === 0) ||
+    (statusQuery.data && !isFinished && !isFailed);
   const fetchingResults = resultsQuery.isFetching;
 
   return (
@@ -180,7 +186,13 @@ export default function AthenaSearch() {
           />
           <Button
             variant="contained"
-            startIcon={(loading || fetchingResults) ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
+            startIcon={
+              loading || fetchingResults ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <SearchIcon />
+              )
+            }
             onClick={handleSearch}
             disabled={loading || fetchingResults}
           >
@@ -227,7 +239,8 @@ export default function AthenaSearch() {
 
       {(submitMutation.error || statusQuery.error || resultsQuery.error) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {(submitMutation.error || statusQuery.error || resultsQuery.error)?.message || 'An error occurred'}
+          {(submitMutation.error || statusQuery.error || resultsQuery.error)?.message ||
+            'An error occurred'}
         </Alert>
       )}
 
@@ -240,7 +253,13 @@ export default function AthenaSearch() {
           onPaginationModelChange={setPaginationModel}
           pageSizeOptions={[5, 10, 25]}
           disableRowSelectionOnClick
-          rowCount={totalRowCount !== undefined && totalRowCount !== null ? Number(totalRowCount) : (resultsQuery.data?.nextToken ? (paginationModel.page + 1) * paginationModel.pageSize + 1 : (paginationModel.page * paginationModel.pageSize) + currentResults.length)}
+          rowCount={
+            totalRowCount !== undefined && totalRowCount !== null
+              ? Number(totalRowCount)
+              : resultsQuery.data?.nextToken
+                ? (paginationModel.page + 1) * paginationModel.pageSize + 1
+                : paginationModel.page * paginationModel.pageSize + currentResults.length
+          }
           paginationMode="server"
         />
       </Paper>
