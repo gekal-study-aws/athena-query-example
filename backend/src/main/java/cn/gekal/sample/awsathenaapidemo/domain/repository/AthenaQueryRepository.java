@@ -1,6 +1,8 @@
 package cn.gekal.sample.awsathenaapidemo.domain.repository;
 
 import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
+import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
+import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
 import java.util.List;
 import java.util.function.Consumer;
 import software.amazon.awssdk.services.athena.model.QueryExecutionState;
@@ -8,9 +10,9 @@ import software.amazon.awssdk.services.athena.model.QueryExecutionState;
 public interface AthenaQueryRepository {
   String submitQuery(String queryString);
 
-  QueryExecutionState getQueryStatus(String queryExecutionId);
+  AuditLogQueryStatusResponse getQueryStatus(String queryExecutionId);
 
-  List<AuditLog> getQueryResults(String queryExecutionId);
+  AuditLogQueryResultResponse getQueryResults(String queryExecutionId, String nextToken, Integer maxResults);
 
   void getQueryResultsStream(String queryExecutionId, Consumer<AuditLog> consumer);
 

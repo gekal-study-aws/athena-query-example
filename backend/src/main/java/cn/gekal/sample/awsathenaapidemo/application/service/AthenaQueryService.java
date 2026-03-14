@@ -2,6 +2,8 @@ package cn.gekal.sample.awsathenaapidemo.application.service;
 
 import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
 import cn.gekal.sample.awsathenaapidemo.infrastructure.client.AthenaQueryClient;
+import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
+import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
 import java.util.List;
 import java.util.function.Consumer;
 import org.springframework.stereotype.Service;
@@ -22,14 +24,15 @@ public class AthenaQueryService {
     return athenaClient.submitQuery(queryString);
   }
 
-  public QueryExecutionState getQueryStatus(String queryExecutionId) {
+  public AuditLogQueryStatusResponse getQueryStatus(String queryExecutionId) {
 
     return athenaClient.getQueryStatus(queryExecutionId);
   }
 
-  public List<AuditLog> getQueryResults(String queryExecutionId) {
+  public AuditLogQueryResultResponse getQueryResults(
+      String queryExecutionId, String nextToken, Integer maxResults) {
 
-    return athenaClient.getQueryResults(queryExecutionId);
+    return athenaClient.getQueryResults(queryExecutionId, nextToken, maxResults);
   }
 
   public void getQueryResultsStream(String queryExecutionId, Consumer<AuditLog> consumer) {

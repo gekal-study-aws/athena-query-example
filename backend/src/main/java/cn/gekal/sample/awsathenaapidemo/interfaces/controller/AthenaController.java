@@ -5,6 +5,7 @@ import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogDownloadUrlResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryRequest;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResponse;
+import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -37,8 +38,6 @@ public class AthenaController {
       sqlBuilder.append(String.format(" AND user_id = '%s'", request.getUserId()));
     }
 
-    sqlBuilder.append(" LIMIT 10");
-
     String queryExecutionId = athenaQueryService.submitQuery(sqlBuilder.toString());
 
     return new AuditLogQueryResponse(queryExecutionId);
@@ -47,15 +46,16 @@ public class AthenaController {
   /** 2. 実行結果のチェック */
   @GetMapping("/status/{queryExecutionId}")
   public AuditLogQueryStatusResponse getQueryStatus(@PathVariable String queryExecutionId) {
-    QueryExecutionState queryStatus = athenaQueryService.getQueryStatus(queryExecutionId);
-
-    return new AuditLogQueryStatusResponse(queryStatus);
+    return athenaQueryService.getQueryStatus(queryExecutionId);
   }
 
   /** 3. チェック結果の取得 */
   @GetMapping("/results/{queryExecutionId}")
-  public List<AuditLog> getQueryResults(@PathVariable String queryExecutionId) {
-    return athenaQueryService.getQueryResults(queryExecutionId);
+  public AuditLogQueryResultResponse getQueryResults(
+      @PathVariable String queryExecutionId,
+      @RequestParam(required = false) String nextToken,
+      @RequestParam(required = false) Integer maxResults) {
+    return athenaQueryService.getQueryResults(queryExecutionId, nextToken, maxResults);
   }
 
   /** 4. チェック結果の取得（ストリーミング） */

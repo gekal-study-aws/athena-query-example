@@ -2,6 +2,8 @@ package cn.gekal.sample.awsathenaapidemo.infrastructure.client;
 
 import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
 import cn.gekal.sample.awsathenaapidemo.domain.repository.AthenaQueryRepository;
+import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
+import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -57,47 +59,56 @@ public class AthenaQueryClient implements AthenaQueryRepository {
   }
 
   @Override
-  public QueryExecutionState getQueryStatus(String queryExecutionId) {
+  public AuditLogQueryStatusResponse getQueryStatus(String queryExecutionId) {
     GetQueryExecutionRequest getQueryExecutionRequest =
         GetQueryExecutionRequest.builder().queryExecutionId(queryExecutionId).build();
 
     GetQueryExecutionResponse getQueryExecutionResponse =
         athenaClient.getQueryExecution(getQueryExecutionRequest);
 
-    return getQueryExecutionResponse.queryExecution().status().state();
+    QueryExecution queryExecution = getQueryExecutionResponse.queryExecution();
+    return new AuditLogQueryStatusResponse(
+        queryExecution.status().state(),
+        queryExecution.statistics() != null ? queryExecution.statistics().dataScannedInBytes() : null);
   }
 
   @Override
-  public List<AuditLog> getQueryResults(String queryExecutionId) {
-    GetQueryResultsRequest getQueryResultsRequest =
-        GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId).build();
+  public AuditLogQueryResultResponse getQueryResults(
+      String queryExecutionId, String nextToken, Integer maxResults) {
+    GetQueryResultsRequest.Builder requestBuilder =
+        GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId);
+
+    if (nextToken != null && !nextToken.isEmpty()) {
+      requestBuilder.nextToken(nextToken);
+    }
+    if (maxResults != null) {
+      requestBuilder.maxResults(maxResults);
+    }
 
     GetQueryResultsResponse getQueryResultsResponse =
-        athenaClient.getQueryResults(getQueryResultsRequest);
+        athenaClient.getQueryResults(requestBuilder.build());
 
     List<ColumnInfo> columnInfos =
         getQueryResultsResponse.resultSet().resultSetMetadata().columnInfo();
     List<Row> rows = getQueryResultsResponse.resultSet().rows();
 
-    // 最初の行がヘッダーの場合はスキップするロジックが必要な場合があるが、
-    // Athenaの結果は通常ResultSetMetadataに含まれるため、データ行のみを処理する。
-    // ただし、AthenaのGetQueryResultsは1行目にヘッダーが含まれることがあるため確認が必要。
-
     List<AuditLog> results = new ArrayList<>();
 
     // rowsの0番目がヘッダーかどうか判定（カラム名と一致するか）
     int startIndex = 0;
-    if (!rows.isEmpty()) {
-      Row firstRow = rows.getFirst();
-      boolean isHeader = true;
-      for (int j = 0; j < Math.min(columnInfos.size(), firstRow.data().size()); j++) {
-        if (!firstRow.data().get(j).varCharValue().equalsIgnoreCase(columnInfos.get(j).name())) {
-          isHeader = false;
-          break;
+    if (nextToken == null || nextToken.isEmpty()) {
+      if (!rows.isEmpty()) {
+        Row firstRow = rows.getFirst();
+        boolean isHeader = true;
+        for (int j = 0; j < Math.min(columnInfos.size(), firstRow.data().size()); j++) {
+          if (!firstRow.data().get(j).varCharValue().equalsIgnoreCase(columnInfos.get(j).name())) {
+            isHeader = false;
+            break;
+          }
         }
-      }
-      if (isHeader) {
-        startIndex = 1;
+        if (isHeader) {
+          startIndex = 1;
+        }
       }
     }
 
@@ -105,7 +116,7 @@ public class AthenaQueryClient implements AthenaQueryRepository {
       AuditLog record = createAuditLog(rows, i, columnInfos);
       results.add(record);
     }
-    return results;
+    return new AuditLogQueryResultResponse(results, getQueryResultsResponse.nextToken());
   }
 
   @Override
