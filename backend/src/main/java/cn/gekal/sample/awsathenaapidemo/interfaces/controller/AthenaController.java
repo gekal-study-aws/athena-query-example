@@ -27,12 +27,19 @@ public class AthenaController {
   @PostMapping("/query")
   public AuditLogQueryResponse submitQuery(@RequestBody AuditLogQueryRequest request) {
     // 監査ログ検索用のSQLを構築
-    String sql =
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append(
         String.format(
-            "SELECT * FROM audit_log_db.audit_logs WHERE year = '%s' AND month = '%s' AND day = '%s' AND user_id = '%s' LIMIT 10",
-            request.getYear(), request.getMonth(), request.getDay(), request.getUserId());
+            "SELECT * FROM audit_log_db.audit_logs WHERE year = '%s' AND month = '%s' AND day = '%s'",
+            request.getYear(), request.getMonth(), request.getDay()));
 
-    String queryExecutionId = athenaQueryService.submitQuery(sql);
+    if (request.getUserId() != null && !request.getUserId().trim().isEmpty()) {
+      sqlBuilder.append(String.format(" AND user_id = '%s'", request.getUserId()));
+    }
+
+    sqlBuilder.append(" LIMIT 10");
+
+    String queryExecutionId = athenaQueryService.submitQuery(sqlBuilder.toString());
 
     return new AuditLogQueryResponse(queryExecutionId);
   }

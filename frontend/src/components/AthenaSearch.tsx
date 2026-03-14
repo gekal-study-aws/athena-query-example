@@ -40,7 +40,7 @@ export default function AthenaSearch() {
   const [year, setYear] = useState('2026');
   const [month, setMonth] = useState('01');
   const [day, setDay] = useState('01');
-  const [userId, setUserId] = useState('user_2');
+  const [userId, setUserId] = useState('');
 
   const [queryExecutionId, setQueryExecutionId] = useState<string | null>(null);
 
