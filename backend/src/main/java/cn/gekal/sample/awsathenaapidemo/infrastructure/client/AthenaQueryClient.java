@@ -85,11 +85,18 @@ public class AthenaQueryClient implements AthenaQueryRepository {
 
     List<AuditLog> results = new ArrayList<>();
 
-    // rowsの0番目がヘッダーかどうか判定（簡易的に"year"などのカラム名が含まれているか）
+    // rowsの0番目がヘッダーかどうか判定（カラム名と一致するか）
     int startIndex = 0;
     if (!rows.isEmpty()) {
       Row firstRow = rows.getFirst();
-      if (firstRow.data().getFirst().varCharValue().equalsIgnoreCase("year")) {
+      boolean isHeader = true;
+      for (int j = 0; j < Math.min(columnInfos.size(), firstRow.data().size()); j++) {
+        if (!firstRow.data().get(j).varCharValue().equalsIgnoreCase(columnInfos.get(j).name())) {
+          isHeader = false;
+          break;
+        }
+      }
+      if (isHeader) {
         startIndex = 1;
       }
     }
@@ -117,7 +124,14 @@ public class AthenaQueryClient implements AthenaQueryRepository {
       int startIndex = 0;
       if (isFirstPage && !rows.isEmpty()) {
         Row firstRow = rows.getFirst();
-        if (firstRow.data().getFirst().varCharValue().equalsIgnoreCase("year")) {
+        boolean isHeader = true;
+        for (int j = 0; j < Math.min(columnInfos.size(), firstRow.data().size()); j++) {
+          if (!firstRow.data().get(j).varCharValue().equalsIgnoreCase(columnInfos.get(j).name())) {
+            isHeader = false;
+            break;
+          }
+        }
+        if (isHeader) {
           startIndex = 1;
         }
       }

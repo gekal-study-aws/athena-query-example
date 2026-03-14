@@ -37,10 +37,10 @@ const columns: GridColDef[] = [
 ];
 
 export default function AthenaSearch() {
-  const [year, setYear] = useState('2024');
+  const [year, setYear] = useState('2026');
   const [month, setMonth] = useState('01');
   const [day, setDay] = useState('01');
-  const [userId, setUserId] = useState('user-001');
+  const [userId, setUserId] = useState('user_2');
 
   const [queryExecutionId, setQueryExecutionId] = useState<string | null>(null);
 
