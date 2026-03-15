@@ -17,7 +17,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-  @Value("${cors.allowed-origins}")
+  @Value("${cors.allowed-origins:}")
   private List<String> allowedOrigins;
 
   @Bean

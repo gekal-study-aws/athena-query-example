@@ -17,10 +17,10 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnClass(OpenApiCustomizer.class)
 public class OpenApiConfig {
 
-  @Value("${aws.apigateway.vpc-link-id}")
+  @Value("${aws.apigateway.vpc-link-id:}")
   private String vpcLinkId;
 
-  @Value("${aws.apigateway.alb-uri}")
+  @Value("${aws.apigateway.alb-uri:}")
   private String albUri;
 
   @Bean
