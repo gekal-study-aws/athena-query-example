@@ -163,7 +163,12 @@ export class EcsServiceStack extends cdk.Stack {
     // NLBのターゲットとしてALBを指定
     nlbListener.addTargets('AlbTarget', {
       port: 80,
-      targets: [new elbv2_targets.AlbTarget(alb, 80)],
+      targets: [new elbv2_targets.AlbListenerTarget(albListener)],
+      healthCheck: {
+        protocol: elbv2.Protocol.HTTP,
+        path: '/actuator/health/readiness',
+        port: '80',
+      },
     });
 
     // 7. API Gateway (REST API)
