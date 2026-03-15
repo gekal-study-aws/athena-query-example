@@ -9,7 +9,7 @@ Content-Type: application/json
     "year": "2026",
     "month": "01",
     "day": "01",
-    "userId": "user_2"
+    "userId": "user_001"
 }
 
 ### status
@@ -19,7 +19,7 @@ GET {{Host}}/api/athena/status/{{query.response.body.queryExecutionId}}
 GET {{Host}}/api/athena/results/{{query.response.body.queryExecutionId}}
 
 ### results(stream)
-GET {{Host}}/api/athena/results-stream/{{query.response.body.queryExecutionId}}
+GET {{Host}}/api/athena/download/{{query.response.body.queryExecutionId}}
 
 ### download url
-GET {{Host}}/api/athena/download-url/{{query.response.body.queryExecutionId}}
+GET {{Host}}/api/athena/download/{{query.response.body.queryExecutionId}}/url
