@@ -88,6 +88,8 @@ npm run setup-sdk
 ./scripts/generate_sample_logs.sh 100 2026-01-02
 ```
 
+※現在、`infra-sdk/data/year=2026/month=01/day=01~07/` には各日100件、ユーザーIDが `user_001`〜`user_020` 形式のテストデータが同梱されています。
+
 ### 2. S3へのアップロード
 
 ローカルの `data/` フォルダを S3 バケットへ同期します。
