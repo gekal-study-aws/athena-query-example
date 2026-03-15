@@ -33,12 +33,8 @@ public class AthenaQueryService {
     return athenaClient.getQueryResults(queryExecutionId, nextToken, maxResults);
   }
 
-  public void getQueryResultsStream(
-      String queryExecutionId,
-      String nextToken,
-      Integer maxResults,
-      Consumer<AuditLogsResult> consumer) {
-    athenaClient.getQueryResultsStream(queryExecutionId, nextToken, maxResults, consumer);
+  public void getQueryResultsStream(String queryExecutionId, Consumer<AuditLogsResult> consumer) {
+    athenaClient.getQueryResultsStream(queryExecutionId, consumer);
   }
 
   public String getDownloadUrl(String queryExecutionId) {

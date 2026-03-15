@@ -99,24 +99,90 @@ export default function AthenaSearch() {
   const isFinished = queryState === 'SUCCEEDED';
   const isFailed = queryState === 'FAILED' || queryState === 'CANCELLED';
 
-  // 3. 結果取得 (ページネーション対応)
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  // 3. 結果取得 (ストリーミング対応)
   const resultsQuery = useQuery({
     queryKey: ['athenaResults', queryExecutionId, paginationModel.page, paginationModel.pageSize],
     queryFn: async () => {
       const currentToken = tokens[paginationModel.page];
-      let url = `/api/athena/results/${queryExecutionId}?maxResults=${paginationModel.pageSize}`;
+      let url = `/api/athena/results-stream/${queryExecutionId}?maxResults=${paginationModel.pageSize}`;
       if (currentToken) {
         url += `&nextToken=${encodeURIComponent(currentToken)}`;
       }
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch results');
-      const data: QueryResult = await res.json();
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch results');
+      if (!response.body) throw new Error('No response body');
+
+      setIsStreaming(true);
+      setCurrentResults([]);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let allResults: AuditLog[] = [];
+      let lastNextToken: string | null = null;
+      let buffer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const parts = buffer.split('\n');
+          // 最後の要素は完了していない可能性があるためバッファに残す
+          buffer = parts.pop() || '';
+
+          for (const jsonStr of parts) {
+            console.log('Received JSON:', jsonStr);
+            if (!jsonStr.trim()) continue;
+            try {
+              const part = JSON.parse(jsonStr);
+              if (part.results) {
+                const newLogs = part.results.map((item: AuditLog, index: number) => ({
+                  ...item,
+                  id: `${paginationModel.page * paginationModel.pageSize + allResults.length + index}`,
+                }));
+                allResults = [...allResults, ...newLogs];
+                setCurrentResults([...allResults]); // プログレッシブに更新
+              }
+              if (part.nextToken !== undefined) {
+                lastNextToken = part.nextToken;
+              }
+            } catch (e) {
+              console.error('Failed to parse JSON part', e, jsonStr);
+            }
+          }
+        }
+        // 残りのバッファを処理
+        if (buffer.trim()) {
+          try {
+            const part = JSON.parse(buffer);
+            if (part.results) {
+              const newLogs = part.results.map((item: AuditLog, index: number) => ({
+                ...item,
+                id: `${paginationModel.page * paginationModel.pageSize + allResults.length + index}`,
+              }));
+              allResults = [...allResults, ...newLogs];
+              setCurrentResults([...allResults]);
+            }
+            if (part.nextToken !== undefined) {
+              lastNextToken = part.nextToken;
+            }
+          } catch (e) {
+            // 不完全なJSONの場合は無視される可能性があるが、ストリーミングの最後であれば発生しにくい
+            console.error('Failed to parse remaining buffer', e, buffer);
+          }
+        }
+      } finally {
+        setIsStreaming(false);
+      }
+
       return {
-        results: data.results.map((item: AuditLog, index: number) => ({
-          ...item,
-          id: `${paginationModel.page * paginationModel.pageSize + index}`,
-        })),
-        nextToken: data.nextToken,
+        results: allResults,
+        nextToken: lastNextToken,
       };
     },
     enabled: isFinished && (paginationModel.page === 0 || !!tokens[paginationModel.page]),
@@ -151,7 +217,7 @@ export default function AthenaSearch() {
       currentResults.length === 0 &&
       paginationModel.page === 0) ||
     (statusQuery.data && !isFinished && !isFailed);
-  const fetchingResults = resultsQuery.isFetching;
+  const fetchingResults = resultsQuery.isFetching || isStreaming;
 
   return (
     <Box sx={{ width: '100%', mt: 4 }}>

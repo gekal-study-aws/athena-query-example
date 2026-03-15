@@ -173,26 +173,12 @@ public class AthenaQueryClient implements AthenaQueryRepository {
   }
 
   @Override
-  public void getQueryResultsStream(
-      String queryExecutionId,
-      String nextToken,
-      Integer maxResults,
-      Consumer<AuditLogsResult> consumer) {
+  public void getQueryResultsStream(String queryExecutionId, Consumer<AuditLogsResult> consumer) {
 
     GetQueryResultsRequest.Builder requestBuilder =
         GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId);
 
-    if (nextToken != null && !nextToken.isEmpty()) {
-      requestBuilder.nextToken(nextToken);
-    }
-    if (maxResults != null) {
-      if (nextToken == null || nextToken.isEmpty()) {
-        // consider header row
-        requestBuilder.maxResults(maxResults + 1);
-      } else {
-        requestBuilder.maxResults(maxResults);
-      }
-    }
+    requestBuilder.maxResults(3);
 
     GetQueryResultsRequest getQueryResultsRequest = requestBuilder.build();
 
@@ -223,10 +209,14 @@ public class AthenaQueryClient implements AthenaQueryRepository {
       for (int i = startIndex; i < rows.size(); i++) {
         AuditLog record = createAuditLog(rows, i, columnInfos);
         auditLogs.add(record);
-        if (auditLogs.size() > 2) {
-          consumer.accept(new AuditLogsResult(auditLogs, response.nextToken()));
+        if (auditLogs.size() >= 5) {
+          consumer.accept(new AuditLogsResult(new ArrayList<>(auditLogs), response.nextToken()));
           auditLogs.clear();
         }
+      }
+      if (!auditLogs.isEmpty()) {
+        consumer.accept(new AuditLogsResult(new ArrayList<>(auditLogs), response.nextToken()));
+        auditLogs.clear();
       }
       isFirstPage = false;
     }

@@ -5,12 +5,10 @@ import java.util.List;
 public class AuditLogsResult {
   private List<AuditLog> results;
   private Integer count;
-  private String nextToken;
 
   public AuditLogsResult(List<AuditLog> results, String nextToken) {
     this.results = results;
     this.count = results == null ? 0 : results.size();
-    this.nextToken = nextToken;
   }
 
   public List<AuditLog> getResults() {
@@ -27,13 +25,5 @@ public class AuditLogsResult {
 
   public void setCount(Integer count) {
     this.count = count;
-  }
-
-  public String getNextToken() {
-    return nextToken;
-  }
-
-  public void setNextToken(String nextToken) {
-    this.nextToken = nextToken;
   }
 }
