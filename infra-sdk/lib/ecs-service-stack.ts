@@ -52,7 +52,7 @@ export class EcsServiceStack extends cdk.Stack {
       cpu: 512,
       runtimePlatform: {
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-        cpuArchitecture: ecs.CpuArchitecture.X86_64,
+        cpuArchitecture: ecs.CpuArchitecture.ARM64,
       },
     });
 
