@@ -114,6 +114,8 @@ export class EcsServiceStack extends cdk.Stack {
       cluster,
       taskDefinition,
       desiredCount: 1,
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
