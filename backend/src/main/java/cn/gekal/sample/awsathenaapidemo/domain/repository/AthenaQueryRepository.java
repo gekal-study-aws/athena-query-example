@@ -1,6 +1,6 @@
 package cn.gekal.sample.awsathenaapidemo.domain.repository;
 
-import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
+import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLogsResult;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
 import java.util.function.Consumer;
@@ -14,7 +14,10 @@ public interface AthenaQueryRepository {
       String queryExecutionId, String nextToken, Integer maxResults);
 
   void getQueryResultsStream(
-      String queryExecutionId, String nextToken, Integer maxResults, Consumer<AuditLog> consumer);
+      String queryExecutionId,
+      String nextToken,
+      Integer maxResults,
+      Consumer<AuditLogsResult> consumer);
 
   String getDownloadUrl(String queryExecutionId);
 }

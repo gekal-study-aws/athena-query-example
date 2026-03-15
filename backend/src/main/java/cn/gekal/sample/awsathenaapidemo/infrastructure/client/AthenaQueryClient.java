@@ -1,6 +1,7 @@
 package cn.gekal.sample.awsathenaapidemo.infrastructure.client;
 
 import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
+import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLogsResult;
 import cn.gekal.sample.awsathenaapidemo.domain.repository.AthenaQueryRepository;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
@@ -173,7 +174,10 @@ public class AthenaQueryClient implements AthenaQueryRepository {
 
   @Override
   public void getQueryResultsStream(
-      String queryExecutionId, String nextToken, Integer maxResults, Consumer<AuditLog> consumer) {
+      String queryExecutionId,
+      String nextToken,
+      Integer maxResults,
+      Consumer<AuditLogsResult> consumer) {
 
     GetQueryResultsRequest.Builder requestBuilder =
         GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId);
@@ -215,9 +219,14 @@ public class AthenaQueryClient implements AthenaQueryRepository {
         }
       }
 
+      ArrayList<AuditLog> auditLogs = new ArrayList<>();
       for (int i = startIndex; i < rows.size(); i++) {
         AuditLog record = createAuditLog(rows, i, columnInfos);
-        consumer.accept(record);
+        auditLogs.add(record);
+        if (auditLogs.size() > 2) {
+          consumer.accept(new AuditLogsResult(auditLogs, response.nextToken()));
+          auditLogs.clear();
+        }
       }
       isFirstPage = false;
     }

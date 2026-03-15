@@ -1,6 +1,6 @@
 package cn.gekal.sample.awsathenaapidemo.application.service;
 
-import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLog;
+import cn.gekal.sample.awsathenaapidemo.domain.model.AuditLogsResult;
 import cn.gekal.sample.awsathenaapidemo.infrastructure.client.AthenaQueryClient;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
@@ -34,7 +34,10 @@ public class AthenaQueryService {
   }
 
   public void getQueryResultsStream(
-      String queryExecutionId, String nextToken, Integer maxResults, Consumer<AuditLog> consumer) {
+      String queryExecutionId,
+      String nextToken,
+      Integer maxResults,
+      Consumer<AuditLogsResult> consumer) {
     athenaClient.getQueryResultsStream(queryExecutionId, nextToken, maxResults, consumer);
   }
 
