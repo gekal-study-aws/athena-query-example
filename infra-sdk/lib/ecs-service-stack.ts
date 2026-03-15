@@ -191,10 +191,19 @@ export class EcsServiceStack extends cdk.Stack {
       targets: [nlb],
     });
 
+    const apiLogGroup = new logs.LogGroup(this, 'ApiGatewayLogs', {
+      retention: logs.RetentionDays.ONE_DAY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     const api = new apigateway.RestApi(this, 'RestApi', {
       restApiName: 'EcsServiceRestApi',
       deployOptions: {
         stageName: 'prod',
+        accessLogDestination: new apigateway.LogGroupLogDestination(apiLogGroup),
+        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields(),
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: true,
       },
     });
 
