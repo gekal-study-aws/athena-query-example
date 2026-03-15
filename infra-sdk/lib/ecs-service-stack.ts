@@ -2,7 +2,8 @@ import * as cdk from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as elbv2_targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -186,9 +187,12 @@ export class EcsServiceStack extends cdk.Stack {
       },
     });
 
-    // 7. API Gateway (REST API)
-    const vpcLink = new apigateway.VpcLink(this, 'VpcLink', {
-      targets: [nlb],
+    // 7. API Gateway (HTTP API - VPC Link V2)
+    // LegacyのVPC Link (REST API用) の警告を解消するため、HTTP API (V2) と VPC Link V2 を使用します。
+    // これにより、パフォーマンスが向上し、コストが削減されます。
+    const vpcLink = new apigatewayv2.VpcLink(this, 'VpcLinkV2', {
+      vpc,
+      securityGroups: [nlbSg],
     });
 
     const apiLogGroup = new logs.LogGroup(this, 'ApiGatewayLogs', {
@@ -196,33 +200,24 @@ export class EcsServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    const api = new apigateway.RestApi(this, 'RestApi', {
-      restApiName: 'EcsServiceRestApi',
-      cloudWatchRole: true, // API GatewayがCloudWatch Logsにアクセスするためのロールを自動作成
-      deployOptions: {
-        stageName: 'prod',
-        accessLogDestination: new apigateway.LogGroupLogDestination(apiLogGroup),
-        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields(),
-        loggingLevel: apigateway.MethodLoggingLevel.INFO,
-        dataTraceEnabled: true,
-      },
-    });
-
-    api.root.addProxy({
-      defaultIntegration: new apigateway.Integration({
-        type: apigateway.IntegrationType.HTTP_PROXY,
-        integrationHttpMethod: 'ANY',
-        options: {
-          connectionType: apigateway.ConnectionType.VPC_LINK,
-          vpcLink: vpcLink,
-        },
-        uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
+    const api = new apigatewayv2.HttpApi(this, 'HttpApi', {
+      apiName: 'EcsServiceHttpApi',
+      createDefaultStage: true,
+      defaultIntegration: new integrations.HttpNlbIntegration('NlbIntegration', nlbListener, {
+        vpcLink,
       }),
     });
 
+    // アクセスログの設定 (HTTP API形式)
+    const stage = api.defaultStage!.node.defaultChild as apigatewayv2.CfnStage;
+    stage.accessLogSettings = {
+      destinationArn: apiLogGroup.logGroupArn,
+      format: '$context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.routeKey $context.protocol" $context.status $context.responseLength $context.requestId',
+    };
+
     // Outputs
     new cdk.CfnOutput(this, 'ApiUrl', {
-      value: api.url,
+      value: api.apiEndpoint,
     });
   }
 }
