@@ -18,13 +18,23 @@ export class EcsServiceStack extends cdk.Stack {
     // コンテナをパブリックサブネットに配置し、Public IPを付与することでインターネット通信を可能にします。
     const vpc = new ec2.Vpc(this, 'EcsVpc', {
       maxAzs: 2,
-      natGateways: 0,
+      natGateways: 1,
       subnetConfiguration: [
         {
           cidrMask: 24,
           name: 'Public',
           subnetType: ec2.SubnetType.PUBLIC,
         },
+        {
+          cidrMask: 24,
+          name: 'Isolated',
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
+        {
+          cidrMask: 24,
+          name: 'Private',
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+        }
       ],
     });
 
@@ -91,7 +101,7 @@ export class EcsServiceStack extends cdk.Stack {
         logGroup: logGroup,
       }),
       environment: {
-        'JAVA_OPTS': '-Xmx384m', // メモリ制限に合わせたJavaオプション
+        'JAVA_OPTS': '',
       },
     });
 
@@ -104,7 +114,10 @@ export class EcsServiceStack extends cdk.Stack {
       cluster,
       taskDefinition,
       desiredCount: 1,
-      assignPublicIp: true, // パブリックサブネット配置のため必須
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      assignPublicIp: false,
       capacityProviderStrategies: [
         {
           capacityProvider: 'FARGATE_SPOT',
