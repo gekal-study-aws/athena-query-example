@@ -1,5 +1,6 @@
 services:
   backend:
+    image: gekal/aws-athena-api-demo:0.0.1-SNAPSHOT
     build:
       context: .
       dockerfile: backend/Dockerfile

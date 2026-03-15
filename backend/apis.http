@@ -1,5 +1,20 @@
 @Host=http://localhost:8080
 
+### Actuator Endpoint
+GET {{ Host }}/actuator
+
+### Actuator Health Check
+GET {{ Host }}/actuator/health
+
+### Actuator Health ping Check
+GET {{ Host }}/actuator/health/ping
+
+### Actuator Health liveness Check
+GET {{ Host }}/actuator/health/liveness
+
+### Actuator Health Readiness Check
+GET {{ Host }}/actuator/health/readiness
+
 ### query
 # @name query
 POST {{Host}}/api/athena/query

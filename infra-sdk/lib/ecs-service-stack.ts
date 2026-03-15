@@ -132,7 +132,7 @@ export class EcsServiceStack extends cdk.Stack {
         containerPort: 8080,
       })],
       healthCheck: {
-        path: '/',
+        path: '/actuator/health/readiness',
       },
     });
 
