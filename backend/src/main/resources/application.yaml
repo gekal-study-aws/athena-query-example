@@ -2,6 +2,11 @@ spring:
   application:
     name: aws-athena-api-demo
 
+cors:
+  allowed-origins:
+    - "http://localhost:3000"
+    - "http://localhost"
+
 aws:
   athena:
     region: ap-northeast-1
