@@ -42,7 +42,19 @@ RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 # 実行に必要な最小限のJREを使用
 # -----------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre
-RUN useradd -m gradle
+
+# 既存の1000ユーザー (ubuntu) を gradle にリネーム、または既存ユーザーを使用
+RUN if id -u 1000 >/dev/null 2>&1; then \
+        USER_NAME=$(id -un 1000); \
+        if [ "$USER_NAME" != "gradle" ]; then \
+            usermod -l gradle "$USER_NAME" && \
+            usermod -d /home/gradle -m gradle; \
+        fi; \
+    else \
+        useradd -m -u 1000 gradle; \
+    fi
+
+ENV HOME=/home/gradle
 USER gradle
 WORKDIR /app
 

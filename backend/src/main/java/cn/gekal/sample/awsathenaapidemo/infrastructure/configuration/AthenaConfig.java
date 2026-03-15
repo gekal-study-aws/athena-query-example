@@ -22,7 +22,9 @@ public class AthenaConfig {
   @Bean
   public AwsCredentialsProvider awsCredentialsProvider() {
     if (profile != null && !profile.isEmpty() && !"default".equals(profile)) {
-      return ProfileCredentialsProvider.create(profile);
+      return ProfileCredentialsProvider.builder()
+          .profileName(profile)
+          .build();
     }
     return DefaultCredentialsProvider.create();
   }
