@@ -10,9 +10,12 @@ import {
   CircularProgress,
   Alert,
   Stack,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 interface AuditLog {
@@ -26,11 +29,6 @@ interface AuditLog {
   ipAddress: string;
   timestamp: string;
   status: string;
-}
-
-interface QueryResult {
-  results: AuditLog[];
-  nextToken: string | null;
 }
 
 const columns: GridColDef[] = [
@@ -99,94 +97,66 @@ export default function AthenaSearch() {
   const isFinished = queryState === 'SUCCEEDED';
   const isFailed = queryState === 'FAILED' || queryState === 'CANCELLED';
 
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  // 3. 結果取得 (ストリーミング対応)
+  // 3. 結果取得 (通常のAPI)
   const resultsQuery = useQuery({
     queryKey: ['athenaResults', queryExecutionId, paginationModel.page, paginationModel.pageSize],
     queryFn: async () => {
       const currentToken = tokens[paginationModel.page];
-      let url = `/api/athena/results-stream/${queryExecutionId}?maxResults=${paginationModel.pageSize}`;
+      let url = `/api/athena/results/${queryExecutionId}?maxResults=${paginationModel.pageSize}`;
       if (currentToken) {
         url += `&nextToken=${encodeURIComponent(currentToken)}`;
       }
 
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch results');
-      if (!response.body) throw new Error('No response body');
+      const data = await response.json();
 
-      setIsStreaming(true);
-      setCurrentResults([]);
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let allResults: AuditLog[] = [];
-      let lastNextToken: string | null = null;
-      let buffer = '';
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          const parts = buffer.split('\n');
-          // 最後の要素は完了していない可能性があるためバッファに残す
-          buffer = parts.pop() || '';
-
-          for (const jsonStr of parts) {
-            console.log('Received JSON:', jsonStr);
-            if (!jsonStr.trim()) continue;
-            try {
-              const part = JSON.parse(jsonStr);
-              if (part.results) {
-                const newLogs = part.results.map((item: AuditLog, index: number) => ({
-                  ...item,
-                  id: `${paginationModel.page * paginationModel.pageSize + allResults.length + index}`,
-                }));
-                allResults = [...allResults, ...newLogs];
-                setCurrentResults([...allResults]); // プログレッシブに更新
-              }
-              if (part.nextToken !== undefined) {
-                lastNextToken = part.nextToken;
-              }
-            } catch (e) {
-              console.error('Failed to parse JSON part', e, jsonStr);
-            }
-          }
-        }
-        // 残りのバッファを処理
-        if (buffer.trim()) {
-          try {
-            const part = JSON.parse(buffer);
-            if (part.results) {
-              const newLogs = part.results.map((item: AuditLog, index: number) => ({
-                ...item,
-                id: `${paginationModel.page * paginationModel.pageSize + allResults.length + index}`,
-              }));
-              allResults = [...allResults, ...newLogs];
-              setCurrentResults([...allResults]);
-            }
-            if (part.nextToken !== undefined) {
-              lastNextToken = part.nextToken;
-            }
-          } catch (e) {
-            // 不完全なJSONの場合は無視される可能性があるが、ストリーミングの最後であれば発生しにくい
-            console.error('Failed to parse remaining buffer', e, buffer);
-          }
-        }
-      } finally {
-        setIsStreaming(false);
-      }
+      const newLogs = data.results.map((item: AuditLog, index: number) => ({
+        ...item,
+        id: `${paginationModel.page * paginationModel.pageSize + index}`,
+      }));
 
       return {
-        results: allResults,
-        nextToken: lastNextToken,
+        results: newLogs,
+        nextToken: data.nextToken,
       };
     },
     enabled: isFinished && (paginationModel.page === 0 || !!tokens[paginationModel.page]),
   });
+
+  const handleDownloadCsv = async () => {
+    if (!queryExecutionId) return;
+    setIsDownloading(true);
+    try {
+      const response = await fetch(`/api/athena/download/${queryExecutionId}`);
+      if (!response.ok) throw new Error('Failed to download CSV');
+      if (!response.body) throw new Error('No response body');
+
+      const reader = response.body.getReader();
+      const chunks: BlobPart[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      const blob = new Blob(chunks, { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit_logs_${queryExecutionId}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (e) {
+      console.error('CSV Download failed', e);
+      alert('Failed to download CSV');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // 結果が取得できたら現在の表示データを更新し、次のページのトークンを保存する
   React.useEffect(() => {
@@ -217,7 +187,7 @@ export default function AthenaSearch() {
       currentResults.length === 0 &&
       paginationModel.page === 0) ||
     (statusQuery.data && !isFinished && !isFailed);
-  const fetchingResults = resultsQuery.isFetching || isStreaming;
+  const fetchingResults = resultsQuery.isFetching;
 
   return (
     <Box sx={{ width: '100%', mt: 4 }}>
@@ -264,6 +234,19 @@ export default function AthenaSearch() {
           >
             Search
           </Button>
+          {isFinished && (
+            <Tooltip title="Download as CSV">
+              <span>
+                <IconButton
+                  color="primary"
+                  onClick={handleDownloadCsv}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? <CircularProgress size={24} /> : <DownloadIcon />}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
         </Stack>
         {dataScanned !== undefined && (
           <Stack direction="row" spacing={2} sx={{ mt: 1 }}>

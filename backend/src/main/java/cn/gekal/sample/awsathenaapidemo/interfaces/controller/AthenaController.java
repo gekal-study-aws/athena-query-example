@@ -61,7 +61,7 @@ public class AthenaController {
   }
 
   /** 4. チェック結果の取得（ストリーミング） */
-  @GetMapping("/results-stream/{queryExecutionId}")
+  @GetMapping("/download/{queryExecutionId}")
   public ResponseBodyEmitter getQueryResultsStream(@PathVariable String queryExecutionId) {
     ResponseBodyEmitter emitter = new ResponseBodyEmitter();
     try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
@@ -90,7 +90,7 @@ public class AthenaController {
   }
 
   /** 5. ダウンロードURLの取得 */
-  @GetMapping("/download-url/{queryExecutionId}")
+  @GetMapping("/download/{queryExecutionId}/url")
   public AuditLogDownloadUrlResponse getDownloadUrl(@PathVariable String queryExecutionId) {
     String downloadUrl = athenaQueryService.getDownloadUrl(queryExecutionId);
     return new AuditLogDownloadUrlResponse(downloadUrl);
