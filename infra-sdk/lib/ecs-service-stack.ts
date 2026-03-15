@@ -52,9 +52,11 @@ export class EcsServiceStack extends cdk.Stack {
       },
     });
 
-    const queryResultBucketName = `athena-results-gekal-${cdk.Stack.of(this).region}`;
-    const queryResultBucket = s3.Bucket.fromBucketName(this, 'QueryResultBucketRef', queryResultBucketName);
+    // ---------------------------------------------------------
+    // IAM権限の設定 (Athena実行に必要な全権限を追加)
+    // ---------------------------------------------------------
 
+    // ① Athena自体の実行権限
     taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
       actions: [
         'athena:StartQueryExecution',
@@ -66,6 +68,37 @@ export class EcsServiceStack extends cdk.Stack {
       resources: ['*'],
     }));
 
+    // ② AWS Glue データカタログの読み取り権限 (audit_log_db のメタデータ取得用)
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'glue:GetDatabase',
+        'glue:GetDatabases',
+        'glue:GetTable',
+        'glue:GetTables',
+        'glue:GetPartition',
+        'glue:GetPartitions',
+      ],
+      resources: ['*'], // ※実運用では特定のカタログに絞るのが望ましいです
+    }));
+
+    // ③ 検索対象となる「元データ」のS3バケットへの読み取り権限
+    const sourceDataBucketName = `audit-log-gekal-${cdk.Stack.of(this).region}`;
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      actions: [
+        's3:GetBucketLocation',
+        's3:ListBucket',
+        's3:GetObject',
+      ],
+      resources: [
+        `arn:aws:s3:::${sourceDataBucketName}`,
+        `arn:aws:s3:::${sourceDataBucketName}/*`
+      ],
+    }));
+
+    // ④ クエリ結果の「出力先」S3バケットへの読み書き権限
+    const queryResultBucketName = `athena-results-gekal-${cdk.Stack.of(this).region}`;
+    const queryResultBucket = s3.Bucket.fromBucketName(this, 'QueryResultBucketRef', queryResultBucketName);
+
     taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
       actions: [
         's3:GetBucketLocation',
@@ -73,7 +106,6 @@ export class EcsServiceStack extends cdk.Stack {
       ],
       resources: [queryResultBucket.bucketArn],
     }));
-
     taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
       actions: [
         's3:GetObject',
@@ -81,6 +113,8 @@ export class EcsServiceStack extends cdk.Stack {
       ],
       resources: [`${queryResultBucket.bucketArn}/*`],
     }));
+
+    // ---------------------------------------------------------
 
     const logGroup = new logs.LogGroup(this, 'AppLogGroup', {
       retention: logs.RetentionDays.ONE_DAY,
@@ -150,8 +184,7 @@ export class EcsServiceStack extends cdk.Stack {
       allowAllOutbound: true,
     });
 
-    // 【修正箇所 1】REST API (VPC Link V1) からのアクセスを許可するため anyIpv4 を指定
-    // ※NLB自体が internal のため、インターネットから直接アクセスされることはありません
+    // REST API (VPC Link V1) からのアクセスを許可するため anyIpv4 を指定
     nlbSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Allow traffic from API Gateway REST API (VPC Link)');
 
     const nlb = new elbv2.NetworkLoadBalancer(this, 'AppNlb', {
@@ -237,7 +270,7 @@ export class EcsServiceStack extends cdk.Stack {
     const apiRes = api.root.addResource('api');
     const athenaRes = apiRes.addResource('athena');
 
-    // /api/athena/query (固定パスなのでそのまま)
+    // /api/athena/query
     const queryRes = athenaRes.addResource('query');
     queryRes.addMethod('POST', new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
@@ -247,7 +280,7 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     queryRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // 動的パスパラメータ {queryExecutionId} のマッピングを追加
+    // 動的パスパラメータ {queryExecutionId} のマッピング定義
     const dynamicIntegrationOptions = {
       ...integrationOptions,
       requestParameters: {
@@ -303,7 +336,7 @@ export class EcsServiceStack extends cdk.Stack {
     }), dynamicMethodOptions);
     downloadUrlRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // Actuatorエントポイント (固定パス)
+    // Actuatorエントポイント
     const actuatorRes = api.root.addResource('actuator');
     actuatorRes.addMethod('GET', new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
@@ -331,7 +364,7 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     pingRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // 全体のプロキシ (フォールバック) での {proxy} パラメータマッピングを追加
+    // 全体のプロキシ (フォールバック) での {proxy} パラメータマッピング
     api.root.addProxy({
       defaultIntegration: new apigateway.Integration({
         type: apigateway.IntegrationType.HTTP_PROXY,
