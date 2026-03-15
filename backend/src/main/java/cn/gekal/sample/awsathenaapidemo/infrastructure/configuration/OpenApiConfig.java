@@ -1,6 +1,8 @@
 package cn.gekal.sample.awsathenaapidemo.infrastructure.configuration;
 
+import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import java.util.HashMap;
@@ -20,6 +22,16 @@ public class OpenApiConfig {
 
   @Value("${aws.apigateway.alb-uri}")
   private String albUri;
+
+  @Bean
+  public OpenAPI customOpenAPI() {
+    return new OpenAPI()
+        .info(
+            new Info()
+                .title("AWS Athena API Demo")
+                .version("1.0.0")
+                .description("Amazon Athena を使用して監査ログを検索するデモ API です。"));
+  }
 
   @Bean
   public OpenApiCustomizer albIntegrationCustomizer() {

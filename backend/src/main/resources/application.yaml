@@ -12,3 +12,13 @@ aws:
     vpc-link-id: "vqxxxx"
     # ALBの内部DNSドメイン（http:// または https:// を含め、末尾の / は含めない）
     alb-uri: "http://internal-my-app-alb-123456789.ap-northeast-1.elb.amazonaws.com"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  show-actuator: true
+  packages-to-scan: cn.gekal.sample.awsathenaapidemo.interfaces.controller

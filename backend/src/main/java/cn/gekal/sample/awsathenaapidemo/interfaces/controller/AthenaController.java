@@ -6,6 +6,9 @@ import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryRequest;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryResultResponse;
 import cn.gekal.sample.awsathenaapidemo.interfaces.dto.AuditLogQueryStatusResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +16,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 
 @RestController
 @RequestMapping("/api/athena")
+@Tag(name = "Athena Query", description = "Athena を使用した監査ログの検索と結果取得 API")
 public class AthenaController {
 
   private final AthenaQueryService athenaQueryService;
@@ -22,6 +26,7 @@ public class AthenaController {
   }
 
   /** 1. 検索の発行 */
+  @Operation(summary = "検索クエリの発行", description = "Athena に対して監査ログ検索用のクエリを発行します。")
   @PostMapping("/query")
   public AuditLogQueryResponse submitQuery(@RequestBody AuditLogQueryRequest request) {
     // 監査ログ検索用のSQLを構築
@@ -46,17 +51,21 @@ public class AthenaController {
   }
 
   /** 2. 実行結果のチェック */
+  @Operation(summary = "クエリ実行ステータスの確認", description = "発行したクエリの実行状態、スキャンされたデータ量、トータル件数などを取得します。")
   @GetMapping("/status/{queryExecutionId}")
-  public AuditLogQueryStatusResponse getQueryStatus(@PathVariable String queryExecutionId) {
+  public AuditLogQueryStatusResponse getQueryStatus(
+      @Parameter(description = "クエリ実行ID") @PathVariable String queryExecutionId) {
     return athenaQueryService.getQueryStatus(queryExecutionId);
   }
 
   /** 3. チェック結果の取得 */
+  @Operation(summary = "検索結果の取得", description = "クエリの実行結果をページネーション形式で取得します。")
   @GetMapping("/results/{queryExecutionId}")
   public AuditLogQueryResultResponse getQueryResults(
-      @PathVariable String queryExecutionId,
-      @RequestParam(required = false) String nextToken,
-      @RequestParam(required = false) Integer maxResults) {
+      @Parameter(description = "クエリ実行ID") @PathVariable String queryExecutionId,
+      @Parameter(description = "次ページ取得用のトークン") @RequestParam(required = false) String nextToken,
+      @Parameter(description = "1ページあたりの最大取得件数") @RequestParam(required = false)
+          Integer maxResults) {
     return athenaQueryService.getQueryResults(queryExecutionId, nextToken, maxResults);
   }
 
