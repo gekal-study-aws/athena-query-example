@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import {Construct} from 'constructs';
+import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
@@ -14,8 +14,6 @@ export class EcsServiceStack extends cdk.Stack {
     super(scope, id, props);
 
     // 1. VPC作成
-    // コスト削減のためNAT Gatewayを0にし、パブリックサブネットのみを作成します。
-    // コンテナをパブリックサブネットに配置し、Public IPを付与することでインターネット通信を可能にします。
     const vpc = new ec2.Vpc(this, 'EcsVpc', {
       maxAzs: 2,
       natGateways: 1,
@@ -41,12 +39,10 @@ export class EcsServiceStack extends cdk.Stack {
     // 2. ECSクラスター
     const cluster = new ecs.Cluster(this, 'EcsCluster', {
       vpc: vpc,
-      containerInsightsV2: ecs.ContainerInsights.DISABLED,   // コスト削減のため無効化
+      containerInsightsV2: ecs.ContainerInsights.DISABLED,
     });
 
     // 3. タスク定義
-    // Java 25を使用 (2026年時点)
-    // Javaアプリはメモリを消費しやすいため、最小構成の0.25 vCPU / 0.5 GB RAMから始め、必要に応じて調整します。
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'JavaAppTaskDef', {
       memoryLimitMiB: 1024,
       cpu: 512,
@@ -86,15 +82,12 @@ export class EcsServiceStack extends cdk.Stack {
       resources: [`${queryResultBucket.bucketArn}/*`],
     }));
 
-    // ロググループ (保持期間を1日に設定してコスト削減)
     const logGroup = new logs.LogGroup(this, 'AppLogGroup', {
       retention: logs.RetentionDays.ONE_DAY,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // コンテナ定義
     const container = taskDefinition.addContainer('AppContainer', {
-      // Docker Hubのイメージを使用
       image: ecs.ContainerImage.fromRegistry('gekal/aws-athena-api-demo:0.0.1-SNAPSHOT'),
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: 'java-app',
@@ -109,7 +102,7 @@ export class EcsServiceStack extends cdk.Stack {
       containerPort: 8080,
     });
 
-    // 4. ECSサービス (Fargate Spotを使用)
+    // 4. ECSサービス
     const service = new ecs.FargateService(this, 'JavaAppService', {
       cluster,
       taskDefinition,
@@ -129,10 +122,9 @@ export class EcsServiceStack extends cdk.Stack {
     });
 
     // 5. Application Load Balancer (Internal)
-    // 内部ALBを作成します。
     const alb = new elbv2.ApplicationLoadBalancer(this, 'AppAlb', {
       vpc,
-      internetFacing: false, // 内部ALBに設定
+      internetFacing: false,
     });
 
     const albListener = alb.addListener('AlbListener', {
@@ -152,15 +144,15 @@ export class EcsServiceStack extends cdk.Stack {
     });
 
     // 6. Network Load Balancer (Internal)
-    // REST APIのVPC LinkはNLBのみをサポートしているため、内部ALBの前にNLBを配置します。
     const nlbSg = new ec2.SecurityGroup(this, 'NlbSg', {
       vpc,
       description: 'Security group for NLB',
       allowAllOutbound: true,
     });
 
-    // APIGW (VPC Link) からのインバウンドトラフィックを許可 (通常、VPC内のプライベート通信として)
-    nlbSg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(80), 'Allow traffic from VPC (API Gateway)');
+    // 【修正箇所 1】REST API (VPC Link V1) からのアクセスを許可するため anyIpv4 を指定
+    // ※NLB自体が internal のため、インターネットから直接アクセスされることはありません
+    nlbSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Allow traffic from API Gateway REST API (VPC Link)');
 
     const nlb = new elbv2.NetworkLoadBalancer(this, 'AppNlb', {
       vpc,
@@ -168,14 +160,12 @@ export class EcsServiceStack extends cdk.Stack {
       securityGroups: [nlbSg],
     });
 
-    // ALBへのトラフィックを許可するために、NLBのセキュリティグループからのポート80へのインバウンドルールを追加
     alb.connections.allowFrom(nlbSg, ec2.Port.tcp(80), 'Allow traffic from NLB Security Group');
 
     const nlbListener = nlb.addListener('NlbListener', {
       port: 80,
     });
 
-    // NLBのターゲットとしてALBを指定
     nlbListener.addTargets('AlbTarget', {
       port: 80,
       targets: [new elbv2_targets.AlbListenerTarget(albListener)],
@@ -199,7 +189,7 @@ export class EcsServiceStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, 'RestApi', {
       restApiName: 'EcsServiceRestApi',
       endpointTypes: [apigateway.EndpointType.REGIONAL],
-      cloudWatchRole: true, // API GatewayがCloudWatch Logsにアクセスするためのロールを自動作成
+      cloudWatchRole: true,
       deployOptions: {
         stageName: 'prod',
         accessLogDestination: new apigateway.LogGroupLogDestination(apiLogGroup),
@@ -209,14 +199,12 @@ export class EcsServiceStack extends cdk.Stack {
       },
     });
 
-    // 共通のインテグレーション設定 (VPC Link経由)
     const integrationOptions: apigateway.IntegrationOptions = {
       connectionType: apigateway.ConnectionType.VPC_LINK,
       vpcLink: vpcLink,
       passthroughBehavior: apigateway.PassthroughBehavior.WHEN_NO_MATCH,
     };
 
-    // CORSプレフライト用のMock Integration
     const corsMockIntegration = new apigateway.MockIntegration({
       requestTemplates: {
         'application/json': '{"statusCode": 200}',
@@ -246,11 +234,10 @@ export class EcsServiceStack extends cdk.Stack {
       ],
     };
 
-    // OpenAPI定義のパスを追加
     const apiRes = api.root.addResource('api');
     const athenaRes = apiRes.addResource('athena');
 
-    // /api/athena/query
+    // /api/athena/query (固定パスなのでそのまま)
     const queryRes = athenaRes.addResource('query');
     queryRes.addMethod('POST', new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
@@ -260,6 +247,19 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     queryRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
+    // 【修正箇所 2】動的パスパラメータ {queryExecutionId} のマッピングを追加
+    const dynamicIntegrationOptions = {
+      ...integrationOptions,
+      requestParameters: {
+        'integration.request.path.queryExecutionId': 'method.request.path.queryExecutionId'
+      }
+    };
+    const dynamicMethodOptions = {
+      requestParameters: {
+        'method.request.path.queryExecutionId': true
+      }
+    };
+
     // /api/athena/status/{queryExecutionId}
     const statusRes = athenaRes.addResource('status');
     const statusIdRes = statusRes.addResource('{queryExecutionId}');
@@ -267,8 +267,8 @@ export class EcsServiceStack extends cdk.Stack {
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: 'GET',
       uri: `http://${nlb.loadBalancerDnsName}/api/athena/status/{queryExecutionId}`,
-      options: integrationOptions,
-    }));
+      options: dynamicIntegrationOptions,
+    }), dynamicMethodOptions);
     statusIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // /api/athena/results/{queryExecutionId}
@@ -278,8 +278,8 @@ export class EcsServiceStack extends cdk.Stack {
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: 'GET',
       uri: `http://${nlb.loadBalancerDnsName}/api/athena/results/{queryExecutionId}`,
-      options: integrationOptions,
-    }));
+      options: dynamicIntegrationOptions,
+    }), dynamicMethodOptions);
     resultsIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // /api/athena/download/{queryExecutionId}
@@ -289,8 +289,8 @@ export class EcsServiceStack extends cdk.Stack {
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: 'GET',
       uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}`,
-      options: integrationOptions,
-    }));
+      options: dynamicIntegrationOptions,
+    }), dynamicMethodOptions);
     downloadIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // /api/athena/download/{queryExecutionId}/url
@@ -299,11 +299,11 @@ export class EcsServiceStack extends cdk.Stack {
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: 'GET',
       uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}/url`,
-      options: integrationOptions,
-    }));
+      options: dynamicIntegrationOptions,
+    }), dynamicMethodOptions);
     downloadUrlRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // Actuatorエントポイントを追加
+    // Actuatorエントポイント (固定パス)
     const actuatorRes = api.root.addResource('actuator');
     actuatorRes.addMethod('GET', new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
@@ -313,7 +313,6 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     actuatorRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // /actuator/health
     const healthRes = actuatorRes.addResource('health');
     healthRes.addMethod('GET', new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
@@ -323,7 +322,6 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     healthRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // /actuator/health/ping
     const pingRes = healthRes.addResource('ping');
     pingRes.addMethod('GET', new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
@@ -333,7 +331,7 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     pingRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // 全体のプロキシ (フォールバック)
+    // 【修正箇所 3】全体のプロキシ (フォールバック) での {proxy} パラメータマッピングを追加
     api.root.addProxy({
       defaultIntegration: new apigateway.Integration({
         type: apigateway.IntegrationType.HTTP_PROXY,
@@ -341,9 +339,17 @@ export class EcsServiceStack extends cdk.Stack {
         options: {
           connectionType: apigateway.ConnectionType.VPC_LINK,
           vpcLink: vpcLink,
+          requestParameters: {
+            'integration.request.path.proxy': 'method.request.path.proxy'
+          }
         },
         uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
       }),
+      defaultMethodOptions: {
+        requestParameters: {
+          'method.request.path.proxy': true
+        }
+      }
     });
 
     // Outputs
