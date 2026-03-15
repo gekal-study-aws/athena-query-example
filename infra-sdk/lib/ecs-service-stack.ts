@@ -153,10 +153,20 @@ export class EcsServiceStack extends cdk.Stack {
 
     // 6. Network Load Balancer (Internal)
     // REST APIのVPC LinkはNLBのみをサポートしているため、内部ALBの前にNLBを配置します。
+    const nlbSg = new ec2.SecurityGroup(this, 'NlbSg', {
+      vpc,
+      description: 'Security group for NLB',
+      allowAllOutbound: true,
+    });
+
     const nlb = new elbv2.NetworkLoadBalancer(this, 'AppNlb', {
       vpc,
       internetFacing: false,
+      securityGroups: [nlbSg],
     });
+
+    // ALBへのトラフィックを許可するために、NLBのセキュリティグループからのポート80へのインバウンドルールを追加
+    alb.connections.allowFrom(nlbSg, ec2.Port.tcp(80), 'Allow traffic from NLB Security Group');
 
     const nlbListener = nlb.addListener('NlbListener', {
       port: 80,
