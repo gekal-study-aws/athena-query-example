@@ -3,9 +3,7 @@ spring:
     name: aws-athena-api-demo
 
 cors:
-  allowed-origins:
-    - "http://localhost:3000"
-    - "http://localhost"
+  allowed-origins: "http://localhost:3000,http://localhost"
 
 aws:
   profile: ${AWS_PROFILE:default}

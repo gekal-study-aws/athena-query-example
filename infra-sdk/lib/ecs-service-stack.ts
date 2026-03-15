@@ -129,6 +129,7 @@ export class EcsServiceStack extends cdk.Stack {
       }),
       environment: {
         'JAVA_OPTS': '',
+        'CORS_ALLOWED_ORIGINS': 'http://localhost:3000,http://localhost:3001',
       },
     });
 
