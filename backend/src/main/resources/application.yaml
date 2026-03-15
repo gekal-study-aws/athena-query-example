@@ -2,7 +2,13 @@ spring:
   application:
     name: aws-athena-api-demo
 
-athena:
-  region: ap-northeast-1
-  database: audit_log_db
-  output-location: s3://athena-results-gekal-ap-northeast-1/results/
+aws:
+  athena:
+    region: ap-northeast-1
+    database: audit_log_db
+    output-location: s3://athena-results-gekal-ap-northeast-1/results/
+  apigateway:
+    # AWS API Gateway VPCリンクのID（例：vqxxxx）
+    vpc-link-id: "vqxxxx"
+    # ALBの内部DNSドメイン（http:// または https:// を含め、末尾の / は含めない）
+    alb-uri: "http://internal-my-app-alb-123456789.ap-northeast-1.elb.amazonaws.com"

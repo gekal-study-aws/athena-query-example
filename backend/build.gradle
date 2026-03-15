@@ -21,6 +21,7 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
@@ -32,6 +33,9 @@ dependencies {
     // SSOのクレデンシャルを使うための依存ライブラリ
     implementation 'software.amazon.awssdk:sso'
     implementation 'software.amazon.awssdk:ssooidc'
+
+    compileOnly libs.springdoc.openapi.starter.webmvc.ui
+    developmentOnly libs.springdoc.openapi.starter.webmvc.ui
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

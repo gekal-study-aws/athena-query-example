@@ -27,10 +27,10 @@ public class AthenaQueryClient implements AthenaQueryRepository {
   private final AthenaClient athenaClient;
   private final S3Presigner s3Presigner;
 
-  @Value("${athena.output-location}")
+  @Value("${aws.athena.output-location}")
   private String outputS3Bucket;
 
-  @Value("${athena.database}")
+  @Value("${aws.athena.database}")
   private String databaseName;
 
   public AthenaQueryClient(AthenaClient athenaClient, S3Presigner s3Presigner) {

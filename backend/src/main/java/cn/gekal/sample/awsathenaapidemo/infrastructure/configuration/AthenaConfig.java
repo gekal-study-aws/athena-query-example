@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 @Configuration
 public class AthenaConfig {
 
-  @Value("${athena.region:ap-northeast-1}")
+  @Value("${aws.athena.region:ap-northeast-1}")
   private String region;
 
   @Bean
