@@ -1,14 +1,26 @@
 services:
-  app:
+  backend:
     build:
-      context: ..
+      context: .
       dockerfile: backend/Dockerfile
-    container_name: aws-athena-api-demo
+    container_name: aws-athena-api-demo-backend
     ports:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: dev
       JAVA_TOOL_OPTIONS: "-Xms512m -Xmx512m --enable-preview"
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+    container_name: aws-athena-api-demo-frontend
+    ports:
+      - "3001:80"
     networks:
       - app-network
 

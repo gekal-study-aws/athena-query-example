@@ -1,13 +1,14 @@
 # Audit Log Search Frontend
 
-Amazon Athena 検索結果を表示するための Next.js アプリケーションです。
+Amazon Athena 検索結果を表示するための Next.js アプリケーションです。静的サイト (SSG) としてビルドされ、Nginx などで配信することを想定しています。
 
 ## 技術スタック
 
-- **Next.js 15 (App Router)**
+- **Next.js 15+ (App Router)**
 - **MUI (Material UI)**: UI コンポーネント
 - **TanStack Query (React Query)**: 非同期データフェッチ・状態管理
 - **Prettier**: コードフォーマット
+- **ビルド形式**: Static Export (`output: 'export'`)
 
 ## 主な機能
 
@@ -32,17 +33,31 @@ npm install
 npm run dev
 ```
 
-`http://localhost:3000` でアクセスできます。バックエンド (localhost:8080) へのリクエストは `next.config.ts` の `rewrites` 設定によりプロキシされます。
+`http://localhost:3000` でアクセスできます。
 
-### ビルドと静的解析
+## ビルドと配信
+
+### ローカルでのビルド
 
 ```bash
-# ビルド (型チェック込)
+# ビルド (out ディレクトリに静的ファイルが生成されます)
 npm run build
+```
 
-# リンター
-npm run lint
+### Docker での実行
+プロジェクトルートの `compose.yaml` を使用して、バックエンドとともに起動します。
+```bash
+docker compose up --build
+```
 
-# フォーマット
+**注意**: 静的サイトとしてビルドされるため、バックエンドの API URL (`NEXT_PUBLIC_API_BASE_URL`) はビルド時に確定させる必要があります。Docker Compose では `args` を使用してビルド引数として渡します。
+
+## コードフォーマット
+
+```bash
+# 自動整形
 npm run format
+
+# チェックのみ
+npm run format:check
 ```

@@ -41,6 +41,8 @@ const columns: GridColDef[] = [
   { field: 'status', headerName: 'Status', width: 100 },
 ];
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
 export default function AthenaSearch() {
   const [year, setYear] = useState('2026');
   const [month, setMonth] = useState('01');
@@ -58,7 +60,7 @@ export default function AthenaSearch() {
   // 1. クエリ実行ミューテーション
   const submitMutation = useMutation({
     mutationFn: async (params: { year: string; month: string; day: string; userId: string }) => {
-      const res = await fetch('/api/athena/query', {
+      const res = await fetch(`${API_BASE_URL}/api/athena/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params),
@@ -78,7 +80,7 @@ export default function AthenaSearch() {
   const statusQuery = useQuery({
     queryKey: ['athenaStatus', queryExecutionId],
     queryFn: async () => {
-      const res = await fetch(`/api/athena/status/${queryExecutionId}`);
+      const res = await fetch(`${API_BASE_URL}/api/athena/status/${queryExecutionId}`);
       if (!res.ok) throw new Error('Failed to check status');
       return res.json();
     },
@@ -128,7 +130,7 @@ export default function AthenaSearch() {
     queryKey: ['athenaResults', queryExecutionId, paginationModel.page, paginationModel.pageSize],
     queryFn: async () => {
       const currentToken = tokens[paginationModel.page];
-      let url = `/api/athena/results/${queryExecutionId}?maxResults=${paginationModel.pageSize}`;
+      let url = `${API_BASE_URL}/api/athena/results/${queryExecutionId}?maxResults=${paginationModel.pageSize}`;
       if (currentToken) {
         url += `&nextToken=${encodeURIComponent(currentToken)}`;
       }
@@ -154,7 +156,7 @@ export default function AthenaSearch() {
     if (!queryExecutionId) return;
     setIsDownloading(true);
     try {
-      const response = await fetch(`/api/athena/download/${queryExecutionId}`);
+      const response = await fetch(`${API_BASE_URL}/api/athena/download/${queryExecutionId}`);
       if (!response.ok) throw new Error('Failed to start download');
       if (!response.body) throw new Error('No response body');
 
