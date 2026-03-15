@@ -159,6 +159,9 @@ export class EcsServiceStack extends cdk.Stack {
       allowAllOutbound: true,
     });
 
+    // APIGW (VPC Link) からのインバウンドトラフィックを許可 (通常、VPC内のプライベート通信として)
+    nlbSg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(80), 'Allow traffic from VPC (API Gateway)');
+
     const nlb = new elbv2.NetworkLoadBalancer(this, 'AppNlb', {
       vpc,
       internetFacing: false,
