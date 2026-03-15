@@ -11,6 +11,7 @@ import {
   Alert,
   Stack,
   IconButton,
+  Snackbar,
   Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
@@ -98,6 +99,29 @@ export default function AthenaSearch() {
   const isFailed = queryState === 'FAILED' || queryState === 'CANCELLED';
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
+  const showToast = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = (
+    _event?: React.SyntheticEvent | Event,
+    reason?: string
+  ) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
 
   // 3. 結果取得 (通常のAPI)
   const resultsQuery = useQuery({
@@ -152,14 +176,14 @@ export default function AthenaSearch() {
       let buffer = '';
 
       // ブラウザが FileSystemWritableFileStream をサポートしているか確認
-      let writer: any = null;
-      let fileHandle: any = null;
+      let writer: FileSystemWritableFileStream | null = null;
+      let fileHandle: FileSystemFileHandle | null = null;
 
       const supportsFileSystemAccess = 'showSaveFilePicker' in window;
 
       if (supportsFileSystemAccess) {
         try {
-          fileHandle = await (window as any).showSaveFilePicker({
+          fileHandle = await window.showSaveFilePicker({
             suggestedName: `audit_logs_${queryExecutionId}.csv`,
             types: [
               {
@@ -256,7 +280,7 @@ export default function AthenaSearch() {
 
       if (writer) {
         await writer.close();
-        alert('CSV download completed.');
+        showToast('CSV download completed.', 'success');
       } else {
         // Fallback: 全データをBlobにしてダウンロード
         console.log('Using fallback method for downloading CSV');
@@ -272,7 +296,7 @@ export default function AthenaSearch() {
       }
     } catch (e) {
       console.error('CSV Download failed', e);
-      alert('Failed to download CSV');
+      showToast('Failed to download CSV', 'error');
     } finally {
       setIsDownloading(false);
     }
@@ -432,6 +456,21 @@ export default function AthenaSearch() {
           paginationMode="server"
         />
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
