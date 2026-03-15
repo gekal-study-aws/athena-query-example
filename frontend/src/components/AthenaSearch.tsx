@@ -131,25 +131,145 @@ export default function AthenaSearch() {
     setIsDownloading(true);
     try {
       const response = await fetch(`/api/athena/download/${queryExecutionId}`);
-      if (!response.ok) throw new Error('Failed to download CSV');
+      if (!response.ok) throw new Error('Failed to start download');
       if (!response.body) throw new Error('No response body');
 
+      // CSVのヘッダー定義
+      const csvHeader = 'Timestamp,User ID,Event,Resource ID,IP Address,Status\n';
+
+      // 文字列をエスケープしてCSVの1フィールドにする関数
+      const escapeCsv = (val: string) => {
+        if (val === undefined || val === null) return '';
+        const s = String(val);
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+          return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+      };
+
       const reader = response.body.getReader();
-      const chunks: BlobPart[] = [];
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      // ブラウザが FileSystemWritableFileStream をサポートしているか確認
+      let writer: any = null;
+      let fileHandle: any = null;
+
+      const supportsFileSystemAccess = 'showSaveFilePicker' in window;
+
+      if (supportsFileSystemAccess) {
+        try {
+          fileHandle = await (window as any).showSaveFilePicker({
+            suggestedName: `audit_logs_${queryExecutionId}.csv`,
+            types: [
+              {
+                description: 'CSV Files',
+                accept: { 'text/csv': ['.csv'] },
+              },
+            ],
+          });
+          writer = await fileHandle.createWritable();
+          // ヘッダーを書き込む
+          await writer.write(csvHeader);
+        } catch (e) {
+          // ユーザーがキャンセルした場合は中断
+          console.log('User cancelled save picker or error occurred', e);
+          setIsDownloading(false);
+          return;
+        }
+      }
+
+      // Fallback用のBlob管理 (FileSystemAccessが使えない場合)
+      const fallbackChunks: BlobPart[] = [];
+      if (!writer) {
+        fallbackChunks.push(csvHeader);
+      }
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        chunks.push(value);
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          console.log('Processing line:', line);
+          try {
+            const data = JSON.parse(line);
+            // data.results は AuditLog[]
+            if (data.results && Array.isArray(data.results)) {
+              let csvRows = '';
+              for (const log of data.results) {
+                const row = [
+                  escapeCsv(log.timestamp),
+                  escapeCsv(log.userId),
+                  escapeCsv(log.eventName),
+                  escapeCsv(log.resourceId),
+                  escapeCsv(log.ipAddress),
+                  escapeCsv(log.status),
+                ].join(',');
+                csvRows += row + '\n';
+              }
+
+              if (writer) {
+                await writer.write(csvRows);
+              } else {
+                fallbackChunks.push(csvRows);
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to parse line:', line, err);
+          }
+        }
       }
-      const blob = new Blob(chunks, { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `audit_logs_${queryExecutionId}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+
+      // 最後の残りを処理 (通常は空のはずだが念のため)
+      if (buffer.trim()) {
+        try {
+          const data = JSON.parse(buffer);
+          if (data.results && Array.isArray(data.results)) {
+            let csvRows = '';
+            for (const log of data.results) {
+              const row = [
+                escapeCsv(log.timestamp),
+                escapeCsv(log.userId),
+                escapeCsv(log.eventName),
+                escapeCsv(log.resourceId),
+                escapeCsv(log.ipAddress),
+                escapeCsv(log.status),
+              ].join(',');
+              csvRows += row + '\n';
+            }
+            if (writer) {
+              await writer.write(csvRows);
+            } else {
+              fallbackChunks.push(csvRows);
+            }
+          }
+        } catch (err) {
+          /* ignore last partial line if not valid json */
+          console.warn('Failed to parse last partial line:', buffer, err);
+        }
+      }
+
+      if (writer) {
+        await writer.close();
+        alert('CSV download completed.');
+      } else {
+        // Fallback: 全データをBlobにしてダウンロード
+        console.log('Using fallback method for downloading CSV');
+        const blob = new Blob(fallbackChunks, { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audit_logs_${queryExecutionId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
     } catch (e) {
       console.error('CSV Download failed', e);
       alert('Failed to download CSV');
