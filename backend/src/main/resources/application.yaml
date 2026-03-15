@@ -8,6 +8,7 @@ cors:
     - "http://localhost"
 
 aws:
+  profile: ${AWS_PROFILE:default}
   athena:
     region: ap-northeast-1
     database: audit_log_db

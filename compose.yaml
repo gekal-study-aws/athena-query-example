@@ -10,6 +10,9 @@ services:
       SPRING_PROFILES_ACTIVE: dev
       JAVA_TOOL_OPTIONS: "-Xms512m -Xmx512m --enable-preview"
       CORS_ALLOWED_ORIGINS: "http://localhost:3001,http://localhost:3000,http://localhost"
+      AWS_PROFILE: "${AWS_PROFILE:-default}"
+    volumes:
+      - ~/.aws:/home/gradle/.aws:ro
     networks:
       - app-network
 

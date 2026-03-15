@@ -42,6 +42,8 @@ RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 # 実行に必要な最小限のJREを使用
 # -----------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre
+RUN useradd -m gradle
+USER gradle
 WORKDIR /app
 
 # 変更頻度の低いものから順に記述することで、Dockerのレイヤーキャッシュを最大化
