@@ -198,6 +198,7 @@ export class EcsServiceStack extends cdk.Stack {
 
     const api = new apigateway.RestApi(this, 'RestApi', {
       restApiName: 'EcsServiceRestApi',
+      cloudWatchRole: true, // API GatewayがCloudWatch Logsにアクセスするためのロールを自動作成
       deployOptions: {
         stageName: 'prod',
         accessLogDestination: new apigateway.LogGroupLogDestination(apiLogGroup),
