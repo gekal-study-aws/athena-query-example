@@ -172,9 +172,25 @@ public class AthenaQueryClient implements AthenaQueryRepository {
   }
 
   @Override
-  public void getQueryResultsStream(String queryExecutionId, Consumer<AuditLog> consumer) {
-    GetQueryResultsRequest getQueryResultsRequest =
-        GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId).build();
+  public void getQueryResultsStream(
+      String queryExecutionId, String nextToken, Integer maxResults, Consumer<AuditLog> consumer) {
+
+    GetQueryResultsRequest.Builder requestBuilder =
+        GetQueryResultsRequest.builder().queryExecutionId(queryExecutionId);
+
+    if (nextToken != null && !nextToken.isEmpty()) {
+      requestBuilder.nextToken(nextToken);
+    }
+    if (maxResults != null) {
+      if (nextToken == null || nextToken.isEmpty()) {
+        // consider header row
+        requestBuilder.maxResults(maxResults + 1);
+      } else {
+        requestBuilder.maxResults(maxResults);
+      }
+    }
+
+    GetQueryResultsRequest getQueryResultsRequest = requestBuilder.build();
 
     Iterable<GetQueryResultsResponse> responses =
         athenaClient.getQueryResultsPaginator(getQueryResultsRequest);

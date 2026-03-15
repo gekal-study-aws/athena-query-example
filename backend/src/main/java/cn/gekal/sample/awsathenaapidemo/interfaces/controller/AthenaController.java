@@ -62,7 +62,10 @@ public class AthenaController {
 
   /** 4. チェック結果の取得（ストリーミング） */
   @GetMapping("/results-stream/{queryExecutionId}")
-  public ResponseBodyEmitter getQueryResultsStream(@PathVariable String queryExecutionId) {
+  public ResponseBodyEmitter getQueryResultsStream(
+      @PathVariable String queryExecutionId,
+      @RequestParam(required = false) String nextToken,
+      @RequestParam(required = false) Integer maxResults) {
     ResponseBodyEmitter emitter = new ResponseBodyEmitter();
     try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
       executor.execute(
@@ -70,6 +73,8 @@ public class AthenaController {
             try {
               athenaQueryService.getQueryResultsStream(
                   queryExecutionId,
+                  nextToken,
+                  maxResults,
                   auditLog -> {
                     try {
                       emitter.send(auditLog);

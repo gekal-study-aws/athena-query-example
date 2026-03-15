@@ -13,7 +13,8 @@ public interface AthenaQueryRepository {
   AuditLogQueryResultResponse getQueryResults(
       String queryExecutionId, String nextToken, Integer maxResults);
 
-  void getQueryResultsStream(String queryExecutionId, Consumer<AuditLog> consumer);
+  void getQueryResultsStream(
+      String queryExecutionId, String nextToken, Integer maxResults, Consumer<AuditLog> consumer);
 
   String getDownloadUrl(String queryExecutionId);
 }
