@@ -12,6 +12,9 @@ COPY settings.gradle ./
 COPY gradle/libs.versions.toml gradle/
 COPY backend/build.gradle backend/
 
+# 空のfrontendディレクトリを作成（settings.gradle で include 'frontend' と定義されているため）
+RUN mkdir frontend
+
 # 依存関係のみを解決（--no-daemonでビルドの安定性を高める）
 RUN gradle :backend:dependencies --no-daemon
 
