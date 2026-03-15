@@ -247,7 +247,7 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     queryRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // 【修正箇所 2】動的パスパラメータ {queryExecutionId} のマッピングを追加
+    // 動的パスパラメータ {queryExecutionId} のマッピングを追加
     const dynamicIntegrationOptions = {
       ...integrationOptions,
       requestParameters: {
@@ -331,7 +331,7 @@ export class EcsServiceStack extends cdk.Stack {
     }));
     pingRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
-    // 【修正箇所 3】全体のプロキシ (フォールバック) での {proxy} パラメータマッピングを追加
+    // 全体のプロキシ (フォールバック) での {proxy} パラメータマッピングを追加
     api.root.addProxy({
       defaultIntegration: new apigateway.Integration({
         type: apigateway.IntegrationType.HTTP_PROXY,
