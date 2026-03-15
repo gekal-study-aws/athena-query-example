@@ -208,6 +208,131 @@ export class EcsServiceStack extends cdk.Stack {
       },
     });
 
+    // 共通のインテグレーション設定 (VPC Link経由)
+    const integrationOptions: apigateway.IntegrationOptions = {
+      connectionType: apigateway.ConnectionType.VPC_LINK,
+      vpcLink: vpcLink,
+      passthroughBehavior: apigateway.PassthroughBehavior.WHEN_NO_MATCH,
+    };
+
+    // CORSプレフライト用のMock Integration
+    const corsMockIntegration = new apigateway.MockIntegration({
+      requestTemplates: {
+        'application/json': '{"statusCode": 200}',
+      },
+      integrationResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Methods': "'GET,POST,PUT,DELETE,OPTIONS'",
+            'method.response.header.Access-Control-Allow-Headers': "'Content-Type,Authorization,X-Api-Key'",
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+        },
+      ],
+    });
+
+    const corsMethodOptions: apigateway.MethodOptions = {
+      methodResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Methods': true,
+            'method.response.header.Access-Control-Allow-Headers': true,
+            'method.response.header.Access-Control-Allow-Origin': true,
+          },
+        },
+      ],
+    };
+
+    // OpenAPI定義のパスを追加
+    const apiRes = api.root.addResource('api');
+    const athenaRes = apiRes.addResource('athena');
+
+    // /api/athena/query
+    const queryRes = athenaRes.addResource('query');
+    queryRes.addMethod('POST', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'POST',
+      uri: `http://${nlb.loadBalancerDnsName}/api/athena/query`,
+      options: integrationOptions,
+    }));
+    queryRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // /api/athena/status/{queryExecutionId}
+    const statusRes = athenaRes.addResource('status');
+    const statusIdRes = statusRes.addResource('{queryExecutionId}');
+    statusIdRes.addMethod('GET', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'GET',
+      uri: `http://${nlb.loadBalancerDnsName}/api/athena/status/{queryExecutionId}`,
+      options: integrationOptions,
+    }));
+    statusIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // /api/athena/results/{queryExecutionId}
+    const resultsRes = athenaRes.addResource('results');
+    const resultsIdRes = resultsRes.addResource('{queryExecutionId}');
+    resultsIdRes.addMethod('GET', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'GET',
+      uri: `http://${nlb.loadBalancerDnsName}/api/athena/results/{queryExecutionId}`,
+      options: integrationOptions,
+    }));
+    resultsIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // /api/athena/download/{queryExecutionId}
+    const downloadRes = athenaRes.addResource('download');
+    const downloadIdRes = downloadRes.addResource('{queryExecutionId}');
+    downloadIdRes.addMethod('GET', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'GET',
+      uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}`,
+      options: integrationOptions,
+    }));
+    downloadIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // /api/athena/download/{queryExecutionId}/url
+    const downloadUrlRes = downloadIdRes.addResource('url');
+    downloadUrlRes.addMethod('GET', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'GET',
+      uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}/url`,
+      options: integrationOptions,
+    }));
+    downloadUrlRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // Actuatorエントポイントを追加
+    const actuatorRes = api.root.addResource('actuator');
+    actuatorRes.addMethod('GET', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'GET',
+      uri: `http://${nlb.loadBalancerDnsName}/actuator`,
+      options: integrationOptions,
+    }));
+    actuatorRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // /actuator/health
+    const healthRes = actuatorRes.addResource('health');
+    healthRes.addMethod('GET', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'GET',
+      uri: `http://${nlb.loadBalancerDnsName}/actuator/health`,
+      options: integrationOptions,
+    }));
+    healthRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // /actuator/health/ping
+    const pingRes = healthRes.addResource('ping');
+    pingRes.addMethod('GET', new apigateway.Integration({
+      type: apigateway.IntegrationType.HTTP_PROXY,
+      integrationHttpMethod: 'GET',
+      uri: `http://${nlb.loadBalancerDnsName}/actuator/health/ping`,
+      options: integrationOptions,
+    }));
+    pingRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
+
+    // 全体のプロキシ (フォールバック)
     api.root.addProxy({
       defaultIntegration: new apigateway.Integration({
         type: apigateway.IntegrationType.HTTP_PROXY,
