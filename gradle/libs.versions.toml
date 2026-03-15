@@ -1,0 +1,13 @@
+[versions]
+springframework-boot = "4.0.2"
+dependency-management = "1.1.7"
+spotless = "8.2.1"
+awssdk-bom = "2.41.0"
+
+[libraries]
+amazon-awssdk-bom = { group = "software.amazon.awssdk", name = "bom", version.ref = "awssdk-bom" }
+
+[plugins]
+springframework-boot = { id = "org.springframework.boot", version.ref = "springframework-boot" }
+dependency-management = { id = "io.spring.dependency-management", version.ref = "dependency-management" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
