@@ -70,8 +70,12 @@ public class AthenaController {
   }
 
   /** 4. チェック結果の取得（ストリーミング） */
+  @Operation(
+      summary = "検索結果の取得（ストリーミング）",
+      description = "クエリの実行結果を JSON 形式でストリーミング取得します。各行は改行コードで区切られます。")
   @GetMapping("/download/{queryExecutionId}")
-  public ResponseBodyEmitter getQueryResultsStream(@PathVariable String queryExecutionId) {
+  public ResponseBodyEmitter getQueryResultsStream(
+      @Parameter(description = "クエリ実行ID") @PathVariable String queryExecutionId) {
     ResponseBodyEmitter emitter = new ResponseBodyEmitter();
     try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
       executor.execute(
@@ -99,8 +103,12 @@ public class AthenaController {
   }
 
   /** 5. ダウンロードURLの取得 */
+  @Operation(
+      summary = "CSVダウンロードURLの取得",
+      description = "Athena が S3 に出力した結果ファイルのプリサインド URL を取得します。")
   @GetMapping("/download/{queryExecutionId}/url")
-  public AuditLogDownloadUrlResponse getDownloadUrl(@PathVariable String queryExecutionId) {
+  public AuditLogDownloadUrlResponse getDownloadUrl(
+      @Parameter(description = "クエリ実行ID") @PathVariable String queryExecutionId) {
     String downloadUrl = athenaQueryService.getDownloadUrl(queryExecutionId);
     return new AuditLogDownloadUrlResponse(downloadUrl);
   }
