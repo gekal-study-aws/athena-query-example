@@ -2,18 +2,24 @@
 
 # -----------------------------------------------------------------------------
 # Stage 1: Build the application
-# Java 25対応のGradleイメージを使用（存在しない場合は nightly/ea を指定）
+# Java 25対応のGradleイメージを使用
 # -----------------------------------------------------------------------------
 FROM gradle:9.2-jdk25 AS builder
 WORKDIR /app
 
-# キャッシュ効率化のため、先に依存関係定義だけをコピー
-COPY build.gradle settings.gradle ./
-# ソースコードをコピー
-COPY src ./src
+# Gradleの設定ファイルを先にコピーして依存関係をキャッシュ
+COPY settings.gradle ./
+COPY gradle/libs.versions.toml gradle/
+COPY backend/build.gradle backend/
 
-# テストをスキップしてビルド (CI/CD等の要件に合わせて調整してください)
-RUN gradle bootJar -x test --no-daemon
+# 依存関係のみを解決（--no-daemonでビルドの安定性を高める）
+RUN gradle :backend:dependencies --no-daemon
+
+# ソースコードをコピー
+COPY backend/src backend/src
+
+# backend プロジェクトのみビルド
+RUN gradle :backend:bootJar -x test --no-daemon
 
 # -----------------------------------------------------------------------------
 # Stage 2: Extract Layers
@@ -23,7 +29,7 @@ FROM eclipse-temurin:25-jdk AS extractor
 WORKDIR /builder
 
 # Stage 1で作成されたJARを取得
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY --from=builder /app/backend/build/libs/*.jar app.jar
 
 # JARを展開 (dependencies, spring-boot-loader, snapshot-dependencies, application)
 RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted

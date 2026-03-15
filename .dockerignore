@@ -1,0 +1,32 @@
+# Dockerignore for multi-project (backend focus)
+
+# Gradle and JVM
+.gradle/
+build/
+bin/
+out/
+.idea/
+*.class
+*.jar
+*.war
+
+# Frontend (if present)
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# Infra
+infra-sdk/node_modules/
+infra-sdk/cdk.out/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker logs
+*.log
+docker-compose.override.yml
