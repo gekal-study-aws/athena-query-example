@@ -16,10 +16,6 @@ public class AuditLogQueryRequest {
   @Schema(description = "ユーザーID (未指定の場合は全ユーザー)", example = "user_001")
   private String userId;
 
-  public boolean isUserSpecified() {
-    return userId != null && !userId.trim().isEmpty();
-  }
-
   public String getYear() {
     return year;
   }

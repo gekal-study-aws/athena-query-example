@@ -35,7 +35,7 @@ public class AthenaController {
             "WHERE year = '%s' AND month = '%s' AND day = '%s'",
             request.getYear(), request.getMonth(), request.getDay());
 
-    if (request.isUserSpecified()) {
+    if (request.getUserId() != null && !request.getUserId().trim().isEmpty()) {
       baseWhere += String.format(" AND user_id = '%s'", request.getUserId());
     }
 
