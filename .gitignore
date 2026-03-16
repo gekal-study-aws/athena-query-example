@@ -3,6 +3,8 @@ build
 
 ### IntelliJ IDEA ###
 .idea
+.junie
+.env
 
 ### VS Code ###
 .vscode/
