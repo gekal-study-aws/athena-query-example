@@ -10,8 +10,7 @@
     "test": "jest",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\"",
-    "cdk": "cdk",
-    "setup-sdk": "ts-node bin/setup-sdk.ts"
+    "cdk": "cdk"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -24,9 +23,6 @@
     "typescript": "~5.9.3"
   },
   "dependencies": {
-    "@aws-sdk/client-athena": "^3.962.0",
-    "@aws-sdk/client-glue": "^3.962.0",
-    "@aws-sdk/client-s3": "^3.962.0",
     "aws-cdk-lib": "2.232.1",
     "constructs": "^10.0.0"
   }
