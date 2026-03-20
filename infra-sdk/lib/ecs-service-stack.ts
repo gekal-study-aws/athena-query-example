@@ -129,9 +129,10 @@ export class EcsServiceStack extends cdk.Stack {
         JAVA_OPTS: '',
         CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://localhost:3001',
         LOGGING_STRUCTURED_FORMAT_CONSOLE: 'ecs',
-        ATHENA_OUTPUT_LOCATION: props.queryResultBucket.s3UrlForObject(),
-        ATHENA_DATABASE: 'audit_log_db',
-        ATHENA_TABLE: 'audit_logs',
+        AWS_ATHENA_REGION: cdk.Stack.of(this).region,
+        AWS_ATHENA_OUTPUT_LOCATION: props.queryResultBucket.s3UrlForObject(),
+        AWS_ATHENA_DATABASE: 'audit_log_db',
+        AWS_ATHENA_TABLE: 'audit_logs',
       },
     });
 

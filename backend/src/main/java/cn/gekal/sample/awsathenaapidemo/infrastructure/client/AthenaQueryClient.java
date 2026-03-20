@@ -33,6 +33,17 @@ public class AthenaQueryClient implements AthenaQueryRepository {
   @Value("${aws.athena.database:}")
   private String databaseName;
 
+  @Value("${aws.athena.table:}")
+  private String tableName;
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
   public AthenaQueryClient(AthenaClient athenaClient, S3Presigner s3Presigner) {
     this.athenaClient = athenaClient;
     this.s3Presigner = s3Presigner;

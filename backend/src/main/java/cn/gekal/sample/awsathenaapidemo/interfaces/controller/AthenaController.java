@@ -43,7 +43,8 @@ public class AthenaController {
     // 効率のため、ウィンドウ関数を使用して1つのクエリでトータル件数も取得する
     String sql =
         String.format(
-            "SELECT *, count(*) OVER() as full_count FROM audit_log_db.audit_logs %s", baseWhere);
+            "SELECT *, count(*) OVER() as full_count FROM %s.%s %s",
+            athenaQueryService.getDatabaseName(), athenaQueryService.getTableName(), baseWhere);
 
     String queryExecutionId = athenaQueryService.submitQuery(sql);
 

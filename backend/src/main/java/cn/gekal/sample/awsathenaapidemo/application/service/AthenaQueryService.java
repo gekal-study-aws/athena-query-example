@@ -17,6 +17,14 @@ public class AthenaQueryService {
     this.athenaClient = athenaClient;
   }
 
+  public String getDatabaseName() {
+    return athenaClient.getDatabaseName();
+  }
+
+  public String getTableName() {
+    return athenaClient.getTableName();
+  }
+
   public String submitQuery(String queryString) {
 
     return athenaClient.submitQuery(queryString);
