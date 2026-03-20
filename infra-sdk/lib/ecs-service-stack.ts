@@ -32,7 +32,7 @@ export class EcsServiceStack extends cdk.Stack {
           cidrMask: 24,
           name: 'Private',
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-        }
+        },
       ],
     });
 
@@ -57,62 +57,59 @@ export class EcsServiceStack extends cdk.Stack {
     // ---------------------------------------------------------
 
     // ① Athena自体の実行権限
-    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
-      actions: [
-        'athena:StartQueryExecution',
-        'athena:GetQueryExecution',
-        'athena:GetQueryResults',
-        'athena:StopQueryExecution',
-        'athena:GetWorkGroup',
-      ],
-      resources: ['*'],
-    }));
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'athena:StartQueryExecution',
+          'athena:GetQueryExecution',
+          'athena:GetQueryResults',
+          'athena:StopQueryExecution',
+          'athena:GetWorkGroup',
+        ],
+        resources: ['*'],
+      }),
+    );
 
     // ② AWS Glue データカタログの読み取り権限 (audit_log_db のメタデータ取得用)
-    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
-      actions: [
-        'glue:GetDatabase',
-        'glue:GetDatabases',
-        'glue:GetTable',
-        'glue:GetTables',
-        'glue:GetPartition',
-        'glue:GetPartitions',
-      ],
-      resources: ['*'], // ※実運用では特定のカタログに絞るのが望ましいです
-    }));
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'glue:GetDatabase',
+          'glue:GetDatabases',
+          'glue:GetTable',
+          'glue:GetTables',
+          'glue:GetPartition',
+          'glue:GetPartitions',
+        ],
+        resources: ['*'], // ※実運用では特定のカタログに絞るのが望ましいです
+      }),
+    );
 
     // ③ 検索対象となる「元データ」のS3バケットへの読み取り権限
     const sourceDataBucketName = `audit-log-gekal-${cdk.Stack.of(this).region}`;
-    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
-      actions: [
-        's3:GetBucketLocation',
-        's3:ListBucket',
-        's3:GetObject',
-      ],
-      resources: [
-        `arn:aws:s3:::${sourceDataBucketName}`,
-        `arn:aws:s3:::${sourceDataBucketName}/*`
-      ],
-    }));
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetBucketLocation', 's3:ListBucket', 's3:GetObject'],
+        resources: [`arn:aws:s3:::${sourceDataBucketName}`, `arn:aws:s3:::${sourceDataBucketName}/*`],
+      }),
+    );
 
     // ④ クエリ結果の「出力先」S3バケットへの読み書き権限
     const queryResultBucketName = `athena-results-gekal-${cdk.Stack.of(this).region}`;
     const queryResultBucket = s3.Bucket.fromBucketName(this, 'QueryResultBucketRef', queryResultBucketName);
 
-    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
-      actions: [
-        's3:GetBucketLocation',
-        's3:ListBucket',
-      ],
-      resources: [queryResultBucket.bucketArn],
-    }));
-    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
-      actions: [
-        's3:GetObject',
-        's3:PutObject',
-      ],
-      resources: [`${queryResultBucket.bucketArn}/*`],
-    }));
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetBucketLocation', 's3:ListBucket'],
+        resources: [queryResultBucket.bucketArn],
+      }),
+    );
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject', 's3:PutObject'],
+        resources: [`${queryResultBucket.bucketArn}/*`],
+      }),
+    );
 
     // ---------------------------------------------------------
 
@@ -128,9 +125,9 @@ export class EcsServiceStack extends cdk.Stack {
         logGroup: logGroup,
       }),
       environment: {
-        'JAVA_OPTS': '',
-        'CORS_ALLOWED_ORIGINS': 'http://localhost:3000,http://localhost:3001',
-        'LOGGING_STRUCTURED_FORMAT_CONSOLE': 'ecs',
+        JAVA_OPTS: '',
+        CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://localhost:3001',
+        LOGGING_STRUCTURED_FORMAT_CONSOLE: 'ecs',
       },
     });
 
@@ -170,10 +167,12 @@ export class EcsServiceStack extends cdk.Stack {
 
     albListener.addTargets('EcsTarget', {
       port: 80,
-      targets: [service.loadBalancerTarget({
-        containerName: 'AppContainer',
-        containerPort: 8080,
-      })],
+      targets: [
+        service.loadBalancerTarget({
+          containerName: 'AppContainer',
+          containerPort: 8080,
+        }),
+      ],
       healthCheck: {
         path: '/actuator/health/readiness',
       },
@@ -274,96 +273,124 @@ export class EcsServiceStack extends cdk.Stack {
 
     // /api/athena/query
     const queryRes = athenaRes.addResource('query');
-    queryRes.addMethod('POST', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'POST',
-      uri: `http://${nlb.loadBalancerDnsName}/api/athena/query`,
-      options: integrationOptions,
-    }));
+    queryRes.addMethod(
+      'POST',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'POST',
+        uri: `http://${nlb.loadBalancerDnsName}/api/athena/query`,
+        options: integrationOptions,
+      }),
+    );
     queryRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // 動的パスパラメータ {queryExecutionId} のマッピング定義
     const dynamicIntegrationOptions = {
       ...integrationOptions,
       requestParameters: {
-        'integration.request.path.queryExecutionId': 'method.request.path.queryExecutionId'
-      }
+        'integration.request.path.queryExecutionId': 'method.request.path.queryExecutionId',
+      },
     };
     const dynamicMethodOptions = {
       requestParameters: {
-        'method.request.path.queryExecutionId': true
-      }
+        'method.request.path.queryExecutionId': true,
+      },
     };
 
     // /api/athena/status/{queryExecutionId}
     const statusRes = athenaRes.addResource('status');
     const statusIdRes = statusRes.addResource('{queryExecutionId}');
-    statusIdRes.addMethod('GET', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'GET',
-      uri: `http://${nlb.loadBalancerDnsName}/api/athena/status/{queryExecutionId}`,
-      options: dynamicIntegrationOptions,
-    }), dynamicMethodOptions);
+    statusIdRes.addMethod(
+      'GET',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'GET',
+        uri: `http://${nlb.loadBalancerDnsName}/api/athena/status/{queryExecutionId}`,
+        options: dynamicIntegrationOptions,
+      }),
+      dynamicMethodOptions,
+    );
     statusIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // /api/athena/results/{queryExecutionId}
     const resultsRes = athenaRes.addResource('results');
     const resultsIdRes = resultsRes.addResource('{queryExecutionId}');
-    resultsIdRes.addMethod('GET', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'GET',
-      uri: `http://${nlb.loadBalancerDnsName}/api/athena/results/{queryExecutionId}`,
-      options: dynamicIntegrationOptions,
-    }), dynamicMethodOptions);
+    resultsIdRes.addMethod(
+      'GET',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'GET',
+        uri: `http://${nlb.loadBalancerDnsName}/api/athena/results/{queryExecutionId}`,
+        options: dynamicIntegrationOptions,
+      }),
+      dynamicMethodOptions,
+    );
     resultsIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // /api/athena/download/{queryExecutionId}
     const downloadRes = athenaRes.addResource('download');
     const downloadIdRes = downloadRes.addResource('{queryExecutionId}');
-    downloadIdRes.addMethod('GET', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'GET',
-      uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}`,
-      options: dynamicIntegrationOptions,
-    }), dynamicMethodOptions);
+    downloadIdRes.addMethod(
+      'GET',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'GET',
+        uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}`,
+        options: dynamicIntegrationOptions,
+      }),
+      dynamicMethodOptions,
+    );
     downloadIdRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // /api/athena/download/{queryExecutionId}/url
     const downloadUrlRes = downloadIdRes.addResource('url');
-    downloadUrlRes.addMethod('GET', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'GET',
-      uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}/url`,
-      options: dynamicIntegrationOptions,
-    }), dynamicMethodOptions);
+    downloadUrlRes.addMethod(
+      'GET',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'GET',
+        uri: `http://${nlb.loadBalancerDnsName}/api/athena/download/{queryExecutionId}/url`,
+        options: dynamicIntegrationOptions,
+      }),
+      dynamicMethodOptions,
+    );
     downloadUrlRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // Actuatorエントポイント
     const actuatorRes = api.root.addResource('actuator');
-    actuatorRes.addMethod('GET', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'GET',
-      uri: `http://${nlb.loadBalancerDnsName}/actuator`,
-      options: integrationOptions,
-    }));
+    actuatorRes.addMethod(
+      'GET',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'GET',
+        uri: `http://${nlb.loadBalancerDnsName}/actuator`,
+        options: integrationOptions,
+      }),
+    );
     actuatorRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     const healthRes = actuatorRes.addResource('health');
-    healthRes.addMethod('GET', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'GET',
-      uri: `http://${nlb.loadBalancerDnsName}/actuator/health`,
-      options: integrationOptions,
-    }));
+    healthRes.addMethod(
+      'GET',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'GET',
+        uri: `http://${nlb.loadBalancerDnsName}/actuator/health`,
+        options: integrationOptions,
+      }),
+    );
     healthRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     const pingRes = healthRes.addResource('ping');
-    pingRes.addMethod('GET', new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: 'GET',
-      uri: `http://${nlb.loadBalancerDnsName}/actuator/health/ping`,
-      options: integrationOptions,
-    }));
+    pingRes.addMethod(
+      'GET',
+      new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'GET',
+        uri: `http://${nlb.loadBalancerDnsName}/actuator/health/ping`,
+        options: integrationOptions,
+      }),
+    );
     pingRes.addMethod('OPTIONS', corsMockIntegration, corsMethodOptions);
 
     // 全体のプロキシ (フォールバック) での {proxy} パラメータマッピング
@@ -375,16 +402,16 @@ export class EcsServiceStack extends cdk.Stack {
           connectionType: apigateway.ConnectionType.VPC_LINK,
           vpcLink: vpcLink,
           requestParameters: {
-            'integration.request.path.proxy': 'method.request.path.proxy'
-          }
+            'integration.request.path.proxy': 'method.request.path.proxy',
+          },
         },
         uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
       }),
       defaultMethodOptions: {
         requestParameters: {
-          'method.request.path.proxy': true
-        }
-      }
+          'method.request.path.proxy': true,
+        },
+      },
     });
 
     // Outputs

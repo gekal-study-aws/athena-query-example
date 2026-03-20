@@ -121,8 +121,8 @@ MSCK REPAIR TABLE audit_log_db_sdk.audit_logs;
 特定の日のログのみをスキャンするため、高速かつ安価に検索できます。
 
 ```sql
-SELECT * 
-FROM audit_log_db.audit_logs 
+SELECT *
+FROM audit_log_db.audit_logs
 WHERE year = '2026' AND month = '01' AND day = '01'
 LIMIT 10;
 ```
@@ -130,9 +130,25 @@ LIMIT 10;
 ## リソースの削除
 
 ### CDK の場合
+
 ```bash
 npx cdk destroy
 ```
 
 ### SDK の場合
+
 S3 バケットや Glue データベースを手動で削除してください。
+
+## 開発用コマンド
+
+### コードのフォーマット
+
+Prettier を使用してコードのフォーマットを整形・チェックします。
+
+```bash
+# フォーマットの実行
+npm run format
+
+# フォーマットのチェック
+npm run format:check
+```

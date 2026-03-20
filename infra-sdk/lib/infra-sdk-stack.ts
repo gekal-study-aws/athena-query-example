@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import {Construct} from 'constructs';
+import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as glue from 'aws-cdk-lib/aws-glue';
 import * as athena from 'aws-cdk-lib/aws-athena';
@@ -24,6 +24,13 @@ export class InfraSdkStack extends cdk.Stack {
       autoDeleteObjects: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      lifecycleRules: [
+        {
+          enabled: true,
+          expiration: cdk.Duration.days(30),
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+        },
+      ],
     });
 
     // 3. Glue Database
@@ -46,9 +53,9 @@ export class InfraSdkStack extends cdk.Stack {
         description: 'Table for audit logs',
         tableType: 'EXTERNAL_TABLE',
         parameters: {
-          'has_encrypted_data': 'false',
-          'classification': 'json',
-          'typeOfData': 'file',
+          has_encrypted_data: 'false',
+          classification: 'json',
+          typeOfData: 'file',
           'projection.enabled': 'true',
           'projection.year.type': 'integer',
           'projection.year.range': '2024,2030',
@@ -62,12 +69,12 @@ export class InfraSdkStack extends cdk.Stack {
         },
         storageDescriptor: {
           columns: [
-            {name: 'timestamp', type: 'string'},
-            {name: 'user_id', type: 'string'},
-            {name: 'event_name', type: 'string'},
-            {name: 'resource_id', type: 'string'},
-            {name: 'status', type: 'string'},
-            {name: 'ip_address', type: 'string'},
+            { name: 'timestamp', type: 'string' },
+            { name: 'user_id', type: 'string' },
+            { name: 'event_name', type: 'string' },
+            { name: 'resource_id', type: 'string' },
+            { name: 'status', type: 'string' },
+            { name: 'ip_address', type: 'string' },
           ],
           location: auditLogBucket.s3UrlForObject('logs/'),
           inputFormat: 'org.apache.hadoop.mapred.TextInputFormat',
@@ -77,9 +84,9 @@ export class InfraSdkStack extends cdk.Stack {
           },
         },
         partitionKeys: [
-          {name: 'year', type: 'string'},
-          {name: 'month', type: 'string'},
-          {name: 'day', type: 'string'},
+          { name: 'year', type: 'string' },
+          { name: 'month', type: 'string' },
+          { name: 'day', type: 'string' },
         ],
       },
     });
