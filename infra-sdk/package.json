@@ -10,7 +10,15 @@
     "test": "jest",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\"",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "cdk-deploy-infra": "cdk deploy InfraSdkStack",
+    "cdk-destroy-infra": "cdk destroy InfraSdkStack",
+    "cdk-diff-infra": "cdk diff InfraSdkStack",
+    "cdk-synth-infra": "cdk synth InfraSdkStack",
+    "cdk-deploy-ecs-service": "cdk deploy EcsServiceStack",
+    "cdk-destroy-ecs-service": "cdk destroy EcsServiceStack",
+    "cdk-diff-ecs-service": "cdk diff EcsServiceStack",
+    "cdk-synth-ecs-service": "cdk synth EcsServiceStack"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
