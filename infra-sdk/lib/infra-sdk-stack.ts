@@ -4,13 +4,22 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as glue from 'aws-cdk-lib/aws-glue';
 import * as athena from 'aws-cdk-lib/aws-athena';
 
+export interface InfraSdkStackProps extends cdk.StackProps {
+  bucketSuffix?: string;
+}
+
 export class InfraSdkStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  public readonly auditLogBucket: s3.IBucket;
+  public readonly queryResultBucket: s3.IBucket;
+
+  constructor(scope: Construct, id: string, props?: InfraSdkStackProps) {
     super(scope, id, props);
 
+    const suffix = props?.bucketSuffix ?? `${cdk.Stack.of(this).account}-${cdk.Stack.of(this).region}`;
+
     // 1. 監査ログ保存用のS3バケット
-    const auditLogBucket = new s3.Bucket(this, 'AuditLogBucket', {
-      bucketName: `audit-log-gekal-${cdk.Stack.of(this).region}`,
+    this.auditLogBucket = new s3.Bucket(this, 'AuditLogBucket', {
+      bucketName: `audit-log-gekal-${suffix}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -18,8 +27,8 @@ export class InfraSdkStack extends cdk.Stack {
     });
 
     // 2. Athenaのクエリ結果保存用のS3バケット
-    const queryResultBucket = new s3.Bucket(this, 'QueryResultBucket', {
-      bucketName: `athena-results-gekal-${cdk.Stack.of(this).region}`,
+    this.queryResultBucket = new s3.Bucket(this, 'QueryResultBucket', {
+      bucketName: `athena-results-gekal-${suffix}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -65,7 +74,7 @@ export class InfraSdkStack extends cdk.Stack {
           'projection.day.type': 'integer',
           'projection.day.range': '1,31',
           'projection.day.digits': '2',
-          'storage.location.template': auditLogBucket.s3UrlForObject('logs/year=${year}/month=${month}/day=${day}'),
+          'storage.location.template': this.auditLogBucket.s3UrlForObject('logs/year=${year}/month=${month}/day=${day}'),
         },
         storageDescriptor: {
           columns: [
@@ -76,7 +85,7 @@ export class InfraSdkStack extends cdk.Stack {
             { name: 'status', type: 'string' },
             { name: 'ip_address', type: 'string' },
           ],
-          location: auditLogBucket.s3UrlForObject('logs/'),
+          location: this.auditLogBucket.s3UrlForObject('logs/'),
           inputFormat: 'org.apache.hadoop.mapred.TextInputFormat',
           outputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat',
           serdeInfo: {
@@ -96,17 +105,17 @@ export class InfraSdkStack extends cdk.Stack {
       name: 'AuditLogWorkGroup',
       workGroupConfiguration: {
         resultConfiguration: {
-          outputLocation: queryResultBucket.s3UrlForObject(),
+          outputLocation: this.queryResultBucket.s3UrlForObject(),
         },
       },
     });
 
     // Outputs
     new cdk.CfnOutput(this, 'AuditLogBucketName', {
-      value: auditLogBucket.bucketName,
+      value: this.auditLogBucket.bucketName,
     });
     new cdk.CfnOutput(this, 'QueryResultBucketName', {
-      value: queryResultBucket.bucketName,
+      value: this.queryResultBucket.bucketName,
     });
   }
 }

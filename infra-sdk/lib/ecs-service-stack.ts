@@ -9,8 +9,13 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
+export interface EcsServiceStackProps extends cdk.StackProps {
+  auditLogBucket: s3.IBucket;
+  queryResultBucket: s3.IBucket;
+}
+
 export class EcsServiceStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: EcsServiceStackProps) {
     super(scope, id, props);
 
     // 1. VPC作成
@@ -86,28 +91,24 @@ export class EcsServiceStack extends cdk.Stack {
     );
 
     // ③ 検索対象となる「元データ」のS3バケットへの読み取り権限
-    const sourceDataBucketName = `audit-log-gekal-${cdk.Stack.of(this).region}`;
     taskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetBucketLocation', 's3:ListBucket', 's3:GetObject'],
-        resources: [`arn:aws:s3:::${sourceDataBucketName}`, `arn:aws:s3:::${sourceDataBucketName}/*`],
+        resources: [props.auditLogBucket.bucketArn, props.auditLogBucket.arnForObjects('*')],
       }),
     );
 
     // ④ クエリ結果の「出力先」S3バケットへの読み書き権限
-    const queryResultBucketName = `athena-results-gekal-${cdk.Stack.of(this).region}`;
-    const queryResultBucket = s3.Bucket.fromBucketName(this, 'QueryResultBucketRef', queryResultBucketName);
-
     taskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetBucketLocation', 's3:ListBucket'],
-        resources: [queryResultBucket.bucketArn],
+        resources: [props.queryResultBucket.bucketArn],
       }),
     );
     taskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetObject', 's3:PutObject'],
-        resources: [`${queryResultBucket.bucketArn}/*`],
+        resources: [props.queryResultBucket.arnForObjects('*')],
       }),
     );
 
@@ -128,6 +129,9 @@ export class EcsServiceStack extends cdk.Stack {
         JAVA_OPTS: '',
         CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://localhost:3001',
         LOGGING_STRUCTURED_FORMAT_CONSOLE: 'ecs',
+        ATHENA_OUTPUT_LOCATION: props.queryResultBucket.s3UrlForObject(),
+        ATHENA_DATABASE: 'audit_log_db',
+        ATHENA_TABLE: 'audit_logs',
       },
     });
 
