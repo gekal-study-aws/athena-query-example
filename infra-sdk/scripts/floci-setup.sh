@@ -110,10 +110,18 @@ echo "==> Creating Athena workgroup: $WORKGROUP_NAME"
 if aws_floci athena get-work-group --work-group "$WORKGROUP_NAME" >/dev/null 2>&1; then
   echo "    workgroup already exists"
 else
-  aws_floci athena create-work-group \
+  WG_OUT=$(aws_floci athena create-work-group \
     --name "$WORKGROUP_NAME" \
-    --configuration "ResultConfiguration={OutputLocation=s3://$RESULT_BUCKET/results/}" >/dev/null
-  echo "    created"
+    --configuration "ResultConfiguration={OutputLocation=s3://$RESULT_BUCKET/results/}" 2>&1) && {
+    echo "    created"
+  } || {
+    if echo "$WG_OUT" | grep -qE "InvalidAction|is not supported|NotImplemented"; then
+      echo "    skipped: Athena workgroup APIs not supported by this Floci version (using default)"
+    else
+      echo "$WG_OUT" >&2
+      exit 1
+    fi
+  }
 fi
 
 echo "==> Uploading sample data from $DATA_DIR"
