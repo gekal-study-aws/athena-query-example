@@ -37,6 +37,7 @@ services:
       - "4566:4566"
     environment:
       FLOCI_SERVICES_ATHENA_DUCK_URL: http://floci-duck:3000
+      FLOCI_HOSTNAME: floci
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./.floci-data:/app/data
