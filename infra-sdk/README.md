@@ -110,6 +110,71 @@ LIMIT 10;
 npx cdk destroy
 ```
 
+## ローカルデバッグ (Floci)
+
+[Floci](https://github.com/floci-io/floci) (AWS ローカルエミュレータ) を使い、AWS にデプロイせずにローカルで Athena を起動してデバッグできます。
+
+### 1. Floci の起動
+
+リポジトリルート (`athena-query-example/`) で実行します。
+
+```bash
+docker compose up -d floci
+```
+
+Floci は `http://localhost:4566` で AWS API 互換のエンドポイントを公開します。
+
+### 2. Athena 環境のセットアップ
+
+`infra-sdk/` で実行します。S3 バケット・Glue データベース/テーブル・Athena Workgroup を Floci 上に作成し、`data/` 配下のサンプルログをアップロードします。
+
+```bash
+cd infra-sdk
+./scripts/floci-setup.sh
+```
+
+作成されるリソース:
+
+| 種別           | 名前                                    |
+| -------------- | --------------------------------------- |
+| S3 バケット    | `audit-log-local`, `athena-results-local` |
+| Glue Database  | `audit_log_db`                          |
+| Glue Table     | `audit_logs`                            |
+| Workgroup      | `AuditLogWorkGroup`                     |
+
+### 3. backend / frontend をローカル AWS 接続で起動
+
+`compose.yaml` の `backend` は `AWS_ENDPOINT_URL=http://floci:4566` で Floci に向くよう設定済みです。
+
+```bash
+docker compose up -d backend frontend
+```
+
+- API: `http://localhost:8080`
+- UI : `http://localhost:3001`
+
+### 4. AWS CLI からの動作確認
+
+```bash
+aws --endpoint-url http://localhost:4566 athena list-work-groups
+aws --endpoint-url http://localhost:4566 s3 ls s3://audit-log-local/logs/
+```
+
+### 環境変数の上書き
+
+`floci-setup.sh` は以下の環境変数で挙動を変更できます。
+
+| 変数                    | デフォルト                |
+| ----------------------- | ------------------------- |
+| `FLOCI_ENDPOINT_URL`    | `http://localhost:4566`   |
+| `FLOCI_REGION`          | `ap-northeast-1`          |
+| `FLOCI_AUDIT_BUCKET`    | `audit-log-local`         |
+| `FLOCI_RESULT_BUCKET`   | `athena-results-local`    |
+| `FLOCI_DATABASE`        | `audit_log_db`            |
+| `FLOCI_TABLE`           | `audit_logs`              |
+| `FLOCI_WORKGROUP`       | `AuditLogWorkGroup`       |
+| `FLOCI_DATA_DIR`        | `data`                    |
+
 ## 開発用コマンド
 
 ### コードのフォーマット

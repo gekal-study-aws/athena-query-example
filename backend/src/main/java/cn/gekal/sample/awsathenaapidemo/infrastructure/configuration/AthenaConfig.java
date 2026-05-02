@@ -1,13 +1,18 @@
 package cn.gekal.sample.awsathenaapidemo.infrastructure.configuration;
 
+import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.athena.AthenaClient;
+import software.amazon.awssdk.services.athena.AthenaClientBuilder;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
@@ -19,8 +24,18 @@ public class AthenaConfig {
   @Value("${aws.profile:default}")
   private String profile;
 
+  @Value("${aws.endpoint-url:}")
+  private String endpointUrl;
+
+  private boolean useLocalEndpoint() {
+    return endpointUrl != null && !endpointUrl.isEmpty();
+  }
+
   @Bean
   public AwsCredentialsProvider awsCredentialsProvider() {
+    if (useLocalEndpoint()) {
+      return StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test"));
+    }
     if (profile != null && !profile.isEmpty() && !"default".equals(profile)) {
       return ProfileCredentialsProvider.builder().profileName(profile).build();
     }
@@ -29,17 +44,23 @@ public class AthenaConfig {
 
   @Bean
   public AthenaClient athenaClient(AwsCredentialsProvider credentialsProvider) {
-    return AthenaClient.builder()
-        .region(Region.of(region))
-        .credentialsProvider(credentialsProvider)
-        .build();
+    AthenaClientBuilder builder =
+        AthenaClient.builder().region(Region.of(region)).credentialsProvider(credentialsProvider);
+    if (useLocalEndpoint()) {
+      builder.endpointOverride(URI.create(endpointUrl));
+    }
+    return builder.build();
   }
 
   @Bean
   public S3Presigner s3Presigner(AwsCredentialsProvider credentialsProvider) {
-    return S3Presigner.builder()
-        .region(Region.of(region))
-        .credentialsProvider(credentialsProvider)
-        .build();
+    S3Presigner.Builder builder =
+        S3Presigner.builder().region(Region.of(region)).credentialsProvider(credentialsProvider);
+    if (useLocalEndpoint()) {
+      builder
+          .endpointOverride(URI.create(endpointUrl))
+          .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
+    }
+    return builder.build();
   }
 }
