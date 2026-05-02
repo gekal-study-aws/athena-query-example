@@ -142,6 +142,10 @@ Floci は `http://localhost:4566` で AWS API 互換のエンドポイントを�
 >
 > `docker compose up -d floci` で `floci-duck-init` → `floci-duck` → `floci` の順に起動されます。
 
+> **`FLOCI_HOSTNAME` の設定について**: Floci はデフォルトでレスポンス URL に `localhost.floci.io` を埋め込みます。これは 127.0.0.1 に解決される DNS ですが、Docker ネットワーク内の floci-duck コンテナからは到達できません (自コンテナを指すため S3 取得が `Could not resolve hostname` で失敗)。
+>
+> `compose.yaml` の floci サービスに `FLOCI_HOSTNAME: floci` を設定することで、Floci が S3 endpoint を `http://floci:4566` として埋め込み、同じネットワーク上の floci-duck から到達可能にしています。
+
 ### 2. Athena 環境のセットアップ
 
 `infra-sdk/` で実行します。S3 バケット・Glue データベース/テーブル・Athena Workgroup を Floci 上に作成し、`data/` 配下のサンプルログをアップロードします。
@@ -158,7 +162,9 @@ cd infra-sdk
 | S3 バケット    | `audit-log-local`, `athena-results-local` |
 | Glue Database  | `audit_log_db`                          |
 | Glue Table     | `audit_logs`                            |
-| Workgroup      | `AuditLogWorkGroup`                     |
+| Workgroup      | `AuditLogWorkGroup` (※下記参照)         |
+
+> **Workgroup 作成のスキップについて**: Floci 1.5.11 時点では Athena の `CreateWorkGroup` API が未実装で、`InvalidAction` エラーが返ります。`floci-setup.sh` はこのエラーを検出した場合に soft-fail (警告を出して継続) する実装になっており、ローカルでは AWS デフォルトの primary workgroup でクエリが実行されます。バックエンドコードはワークグループを明示指定していないため、機能上の影響はありません。
 
 ### 3-A. IDE (IntelliJ IDEA など) からデバッグ
 
@@ -186,6 +192,23 @@ docker compose up -d backend frontend
 aws --endpoint-url http://localhost:4566 athena list-work-groups
 aws --endpoint-url http://localhost:4566 s3 ls s3://audit-log-local/logs/
 ```
+
+### Floci 1.5.11 の制約と SQL 構築方針
+
+Floci 1.5.11 の floci-duck サイドカーは Glue データベースに対応する DuckDB スキーマを作成せず、ビューを **デフォルトスキーマ (`main`)** に作成します。たとえば setup SQL は以下のようになります。
+
+```sql
+CREATE OR REPLACE VIEW "audit_logs" AS SELECT * FROM read_json_auto('s3://audit-log-local/logs/**');
+```
+
+このため、SQL 内で `audit_log_db.audit_logs` のようにデータベースで修飾すると `schema "audit_log_db" does not exist` エラーになります。
+
+**対応**: `AthenaController` は SQL を **テーブル名のみ** (`FROM audit_logs`) で構築します。`AthenaQueryClient.submitQuery()` で `QueryExecutionContext.database(databaseName)` を設定しているため、
+
+- ローカル (Floci): `main.audit_logs` ビューに直接マッチして成功
+- 本番 (AWS Athena): `QueryExecutionContext` のデフォルトデータベースが適用され `audit_log_db.audit_logs` として解決
+
+の両方で同一の SQL が動作します。
 
 ### 環境変数の上書き
 
