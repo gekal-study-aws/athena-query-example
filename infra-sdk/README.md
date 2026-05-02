@@ -136,6 +136,12 @@ docker compose up -d floci
 
 Floci は `http://localhost:4566` で AWS API 互換のエンドポイントを公開します。
 
+> **floci-duck サイドカー構成について**: Athena は内部で `floci-duck` (DuckDB) サイドカーが S3 上のデータを SQL 評価します。Floci がデフォルトで自動起動する floci-duck は、初回クエリ時に `httpfs` 拡張機能を `extensions.duckdb.org` からダウンロードしますが、ネットワーク環境によっては失敗します。
+>
+> このため `compose.yaml` では floci-duck を **手動管理** し、起動前に `floci-duck-init` で `httpfs.duckdb_extension` を Docker volume (`floci-duck-ext`) にキャッシュしてから `floci-duck` にマウントしています。Floci には `FLOCI_SERVICES_ATHENA_DUCK_URL=http://floci-duck:3000` を渡し、内部での container 起動をスキップさせます。
+>
+> `docker compose up -d floci` で `floci-duck-init` → `floci-duck` → `floci` の順に起動されます。
+
 ### 2. Athena 環境のセットアップ
 
 `infra-sdk/` で実行します。S3 バケット・Glue データベース/テーブル・Athena Workgroup を Floci 上に作成し、`data/` 配下のサンプルログをアップロードします。

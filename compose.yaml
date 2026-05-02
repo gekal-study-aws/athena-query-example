@@ -1,10 +1,42 @@
 services:
+  floci-duck-init:
+    image: alpine:3.20
+    container_name: floci-duck-init
+    entrypoint: ["/bin/sh", "/init/floci-duck-init.sh"]
+    environment:
+      DUCKDB_VERSION: v1.5.2
+    volumes:
+      - floci-duck-ext:/ext
+      - ./infra-sdk/scripts:/init:ro
+    networks:
+      - app-network
+
+  floci-duck:
+    image: floci/floci-duck:latest
+    container_name: floci-duck
+    depends_on:
+      floci-duck-init:
+        condition: service_completed_successfully
+    environment:
+      FLOCI_DUCK_S3_ACCESS_KEY: test
+      FLOCI_DUCK_S3_SECRET_KEY: test
+      FLOCI_DUCK_S3_REGION: ap-northeast-1
+      FLOCI_DUCK_EXT_DIR: /ext
+    volumes:
+      - floci-duck-ext:/ext
+    networks:
+      - app-network
+
   floci:
     image: floci/floci:latest
     container_name: floci
     user: root
+    depends_on:
+      - floci-duck
     ports:
       - "4566:4566"
+    environment:
+      FLOCI_SERVICES_ATHENA_DUCK_URL: http://floci-duck:3000
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./.floci-data:/app/data
@@ -44,3 +76,6 @@ services:
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  floci-duck-ext:
