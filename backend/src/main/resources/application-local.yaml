@@ -1,0 +1,7 @@
+aws:
+  endpoint-url: ${AWS_ENDPOINT_URL:http://localhost:4566}
+  athena:
+    region: ${AWS_ATHENA_REGION:ap-northeast-1}
+    database: ${AWS_ATHENA_DATABASE:audit_log_db}
+    table: ${AWS_ATHENA_TABLE:audit_logs}
+    output-location: ${AWS_ATHENA_OUTPUT_LOCATION:s3://athena-results-local/results/}

@@ -114,6 +114,18 @@ npx cdk destroy
 
 [Floci](https://github.com/floci-io/floci) (AWS ローカルエミュレータ) を使い、AWS にデプロイせずにローカルで Athena を起動してデバッグできます。
 
+### 接続切り替えの仕組み
+
+backend は Spring プロファイルで接続先を切り替えます。
+
+| 環境               | プロファイル | 接続先                             |
+| ------------------ | ------------ | ---------------------------------- |
+| IDE デバッグ       | `local`      | Floci (`http://localhost:4566`)    |
+| Docker Compose     | `local`      | Floci (`http://floci:4566`)        |
+| ECS / 本番         | (未指定)     | 実 AWS                             |
+
+`application-local.yaml` で Floci 用の設定 (`aws.endpoint-url`, バケット名等) を定義しています。`local` プロファイル未指定時は `application.yaml` の `aws.endpoint-url=` (空) が使われ、AWS SDK は実 AWS に接続します。
+
 ### 1. Floci の起動
 
 リポジトリルート (`athena-query-example/`) で実行します。
@@ -142,9 +154,18 @@ cd infra-sdk
 | Glue Table     | `audit_logs`                            |
 | Workgroup      | `AuditLogWorkGroup`                     |
 
-### 3. backend / frontend をローカル AWS 接続で起動
+### 3-A. IDE (IntelliJ IDEA など) からデバッグ
 
-`compose.yaml` の `backend` は `AWS_ENDPOINT_URL=http://floci:4566` で Floci に向くよう設定済みです。
+backend の Run/Debug Configuration に以下を設定:
+
+- **Active profiles**: `local`
+- (もしくは環境変数 `SPRING_PROFILES_ACTIVE=local`)
+
+これだけで `application-local.yaml` が読み込まれ、AthenaClient / S3Presigner が `http://localhost:4566` の Floci に接続します。クレデンシャルは自動で `test/test` (静的) が使われるため、AWS CLI 設定や `~/.aws/credentials` への依存はありません。
+
+### 3-B. Docker Compose で起動
+
+`compose.yaml` の `backend` は `SPRING_PROFILES_ACTIVE=local` + `AWS_ENDPOINT_URL=http://floci:4566` で Floci に向くよう設定済みです。
 
 ```bash
 docker compose up -d backend frontend
