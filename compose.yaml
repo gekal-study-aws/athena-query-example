@@ -12,7 +12,7 @@ services:
       - app-network
 
   floci-duck:
-    image: floci/floci-duck:latest
+    image: floci/floci-duck:0.1.5
     container_name: floci-duck
     depends_on:
       floci-duck-init:
@@ -28,7 +28,7 @@ services:
       - app-network
 
   floci:
-    image: floci/floci:latest
+    image: floci/floci:1.5.12
     container_name: floci
     user: root
     depends_on:
