@@ -148,7 +148,21 @@ Floci は `http://localhost:4566` で AWS API 互換のエンドポイントを�
 
 ### 2. Athena 環境のセットアップ
 
-`infra-sdk/` で実行します。S3 バケット・Glue データベース/テーブル・Athena Workgroup を Floci 上に作成し、`data/` 配下のサンプルログをアップロードします。
+`compose.yaml` の `floci-setup` サービスが Floci 起動後に自動で `floci-setup.sh` を実行し、S3 バケット・Glue データベース/テーブル・Athena Workgroup の作成と `infra-sdk/data/` 配下のサンプルログのアップロードを行います。`backend` サービスは `floci-setup` の正常終了を待ってから起動するよう `depends_on: { condition: service_completed_successfully }` で連結されています。
+
+つまり、通常の `docker compose up -d` でセットアップまで完了します。
+
+```bash
+docker compose up -d
+```
+
+手動で再実行したい場合 (例: サンプルデータを追加してアップロードし直す):
+
+```bash
+docker compose run --rm floci-setup
+```
+
+ホスト側で直接実行することも可能です (AWS CLI が必要):
 
 ```bash
 cd infra-sdk
@@ -164,7 +178,7 @@ cd infra-sdk
 | Glue Table     | `audit_logs`                            |
 | Workgroup      | `AuditLogWorkGroup` (※下記参照)         |
 
-> **Workgroup 作成のスキップについて**: Floci 1.5.11 時点では Athena の `CreateWorkGroup` API が未実装で、`InvalidAction` エラーが返ります。`floci-setup.sh` はこのエラーを検出した場合に soft-fail (警告を出して継続) する実装になっており、ローカルでは AWS デフォルトの primary workgroup でクエリが実行されます。バックエンドコードはワークグループを明示指定していないため、機能上の影響はありません。
+> **Workgroup 作成のスキップについて**: Floci 1.5.12 時点では Athena の `CreateWorkGroup` API が未実装で、`InvalidAction` エラーが返ります。`floci-setup.sh` はこのエラーを検出した場合に soft-fail (警告を出して継続) する実装になっており、ローカルでは AWS デフォルトの primary workgroup でクエリが実行されます。バックエンドコードはワークグループを明示指定していないため、機能上の影響はありません。
 
 ### 3-A. IDE (IntelliJ IDEA など) からデバッグ
 

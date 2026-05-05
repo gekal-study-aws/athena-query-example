@@ -44,6 +44,23 @@ services:
     networks:
       - app-network
 
+  floci-setup:
+    image: amazon/aws-cli:2.17.0
+    container_name: floci-setup
+    depends_on:
+      - floci
+    entrypoint: ["bash", "/infra-sdk/scripts/floci-setup.sh"]
+    environment:
+      FLOCI_ENDPOINT_URL: http://floci:4566
+      FLOCI_REGION: ap-northeast-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    volumes:
+      - ./infra-sdk:/infra-sdk:ro
+    networks:
+      - app-network
+    restart: "no"
+
   backend:
     image: gekal/aws-athena-api-demo:0.0.1-SNAPSHOT
     build:
@@ -51,7 +68,8 @@ services:
       dockerfile: backend/Dockerfile
     container_name: aws-athena-api-demo-backend
     depends_on:
-      - floci
+      floci-setup:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
     environment:

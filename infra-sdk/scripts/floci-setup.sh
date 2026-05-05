@@ -19,9 +19,8 @@ aws_floci() {
 }
 
 echo "==> Waiting for Floci at $ENDPOINT_URL"
-for _ in $(seq 1 30); do
-  if curl -sf "$ENDPOINT_URL/_floci/health" >/dev/null 2>&1 \
-    || curl -sf "$ENDPOINT_URL/" >/dev/null 2>&1; then
+for _ in $(seq 1 60); do
+  if aws_floci s3 ls >/dev/null 2>&1; then
     break
   fi
   sleep 1
